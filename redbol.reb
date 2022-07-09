@@ -240,7 +240,7 @@ rewrite-spec-and-body: helper [
 
         spec: head spec  ; At tail, so seek head for any debugging!
 
-        set body-out compose [
+        body-out: compose [
             ;
             ; We don't go to an effort to provide a non-definitional return.
             ; But support for an EXIT that's a synonym for returning void.
