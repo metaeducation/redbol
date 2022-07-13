@@ -37,7 +37,9 @@ REBOL [
     }
 ]
 
+import <function2.r>
 import <parse2.r>
+
 
 ; !!! The general workings of modules is to scan them for top-level set-words,
 ; and then bind the module itself to those words.  This module is redefining
@@ -108,158 +110,6 @@ any-object!: emulate [any-context!]
 any-object?: emulate [:any-context?]
 
 
-
-; Refinement arguments in Ren-C are conveyed via the refinement value itself:
-;
-; https://trello.com/c/DaVz9GG3/
-;
-; The old behavior is simulated by creating locals for the refinement args
-; and then having a bit of code at the beginning of the body that moves the
-; refinement's value into it.
-;
-; Also adds a specialization of the definitional return to act as EXIT.
-;
-rewrite-spec-and-body: helper [
-    function [
-        return: "New spec" [block!]
-        body-out: "New body" [block!]
-        spec "(modified)" [block!]
-        body "(modified)" [block!]
-    ][
-        ; R3-Alpha didn't implement the Rebol2 `func [[throw catch] x y][...]`
-        ; but it didn't error on the block in the first position.  It just
-        ; ignored it.  For now, do the same in the emulation.
-        ;
-        if block? first spec [take spec]  ; skip Rebol2's [throw]
-
-        ; Rebol2 and R3-Alpha hid refinements that appeared after /LOCAL
-        ; https://forum.rebol.info/t/analogue-to-rebol2s-hidden-parameters/1273
-        ; Don't hide them, but make them work by pushing them before <local>.
-        ;
-        local-tag-pos: null
-
-        swap-if-after-local: does [
-            if local-tag-pos [
-                assert [local-tag-pos.1 = <local>]
-                local-tag-pos: insert/only local-tag-pos take spec
-                assert [local-tag-pos.1 = <local>]
-            ]
-        ]
-
-        spool-descriptions-and-locals: does [
-            while [match [text! set-word!] first spec] [  ; end-tolerant (null)
-                if not set-word? spec.1 [
-                    swap-if-after-local  ; description for hidden refinement..?
-                ]
-                spec: my next
-            ]
-        ]
-
-        while [not tail? spec] [
-            refinement: to word! try match path! spec.1
-
-            ; Refinements with multiple arguments are no longer allowed, and
-            ; there weren't many of those so it's not a big deal.  But there
-            ; are *many* instances of the non-refinement usage of /LOCAL.
-            ; These translate in Ren-C to the <local> tag.
-            ;
-            if refinement = 'local [
-                change spec <local>
-                local-tag-pos: spec  ; see note about hidden refinements above
-                spec: my next
-                continue
-            ]
-
-            if not refinement [
-                spec: my next  ; ordinary args (or local WORD! after /LOCAL)
-                continue
-            ]
-
-            ; if we get here it's a refinement that is *not* /LOCAL.  This
-            ; means if local-tag-pos isn't null, we need to be moving
-            ; everything we do back to before the <local> (spool does this too)
-            ;
-            swap-if-after-local
-            spec: my next
-
-            spool-descriptions-and-locals
-
-            if not argument: match [word! lit-word! get-word!] first spec [
-                insert body compose/deep [
-                    (refinement): either (refinement) [true] [blank]
-                ]
-                continue
-            ]
-
-            if tail? spec [break]
-
-            take spec  ; don't want argument between refinement + type block
-
-            spool-descriptions-and-locals
-
-            ; may be at tail, if so need the [any-value!] injection
-
-            if types: match block! spec.1 [  ; explicit arg types
-                swap-if-after-local
-                spec: my next
-            ]
-            else [
-                insert/only spec [any-value!]  ; old refinement-arg default
-                swap-if-after-local
-                spec: my next
-            ]
-
-            append spec to tuple! argument  ; .VAR in specs are locals
-
-            ; Take the value of the refinement and assign it to the argument
-            ; name that was in the spec.  Then set refinement to true/blank.
-            ;
-            ; (Rebol2 missing refinements are #[none], or #[true] if present
-            ; Red missing refinements are #[false], or #[true] if present
-            ; Rebol2 and Red arguments to unused refinements are #[none]
-            ; Since there's no agreement, Redbol goes with the Rebol2 way,
-            ; since NONE! is closer to Ren-C's NULL for unused refinements.)
-
-            insert body compose/deep [
-                (argument): :(refinement)
-                (refinement): either value? :(refinement) [true] [blank]
-            ]
-
-            if tail? spec [break]
-            spool-descriptions-and-locals
-            if tail? spec [break]
-
-            if extra: match any-word! first spec [
-                fail [
-                    {Refinement} refinement {can't take more than one}
-                    {argument in the Redbol emulation, so} extra {must be}
-                    {done some other way.  (We should be *able* to do}
-                    {it via variadics, but would be much more involved.)}
-                ]
-            ]
-        ]
-
-        spec: head spec  ; At tail, so seek head for any debugging!
-
-        body-out: compose [
-            ;
-            ; We don't go to an effort to provide a non-definitional return.
-            ; But support for an EXIT that's a synonym for returning void.
-            ;
-            exit: specialize :return [value: '~]
-
-            ; Historical Rebol supports an implicit RETURN, which was vetoed
-            ; in the design of Ren-C (but easy to customize, just like this)
-            ;
-            ; https://forum.rebol.info/t/1656
-            ;
-            return (as group! body)
-        ]
-        append spec [<local> exit]  ; FUNC needs it (function doesn't...)
-        return spec
-    ]
-]
-
 ; If a Ren-C function suspects it is running code that may happen more than
 ; once (e.g. a loop or function body) it marks that parameter `<const>`.
 ; That prevents casual mutations.
@@ -270,7 +120,10 @@ rewrite-spec-and-body: helper [
 ; correctly, the bad implementation of RESKINNED had to be pulled out.  For
 ; the moment, the const parameter is not tweaked in Redbol...but the feature
 ; is aiming to come back shortly in much better form.
-;
+
+export func: :func2
+export function: :function2
+export apply: :apply2
 
 for-each-nonconst: emulate [
 ;    reskinned [
@@ -278,123 +131,6 @@ for-each-nonconst: emulate [
 ;    ] adapt :for-each []  ; see RESKINNED for why this is an ADAPT for now
 
     :for-each
-]
-
-func-nonconst: emulate [
-;    reskinned [body [block!]] adapt :func []
-
-    :func
-]
-
-function-nonconst: emulate [
-;     reskinned [body [block!]] adapt :function []
-
-    :function
-]
-
-redbol-func: func: emulate [
-    function [
-        return: [action!]
-        spec [block!]
-        body [block!]
-    ][
-        if find spec <local> [
-            return func-nonconst spec body  ; assume "new style" function
-        ]
-
-        [spec body]: rewrite-spec-and-body spec body
-
-        return func-nonconst spec body
-    ]
-]
-
-redbol-function: function: emulate [
-    function [
-        return: [action!]
-        spec [block!]
-        body [block!]
-        /with [object! block! map!]  ; from R3-Alpha, not adopted by Red
-        /extern [block!]  ; from R3-Alpha, adopted by Red
-    ][
-        if find spec <local> [
-            return function-nonconst spec body  ; assume "new style" function
-        ]
-
-        if block? with [with: make object! with]
-
-        [spec body]: rewrite-spec-and-body (copy spec) (copy body)
-
-        ; The shift in Ren-C is to remove the refinements from FUNCTION, and
-        ; put everything into the spec dialect...marked with <tags>
-        ;
-        if with [
-            append spec compose [<in> (with)]  ; <in> replaces /WITH
-        ]
-        if extern [
-            append spec compose [<with> ((extern))]  ; <with> replaces /EXTERN
-        ]
-
-        return function-nonconst spec body
-    ]
-]
-
-apply: emulate [
-    ; Historical Rebol had an APPLY which would take refinements themselves
-    ; as arguments in the block.
-    ;
-    ; `APPEND/ONLY/DUP A B 2` => `apply :append [a b none none true true 2]`
-    ;
-    ; This made the apply call aware of the ordering of refinements in the
-    ; spec, which is not supposed to be a thing.  So Ren-C's APPLY requires
-    ; you to account for any refinements in your call by naming them in the
-    ; path that you are applying, then the array should have exactly that
-    ; number of arguments: https://trello.com/c/P2HCcu0V
-    ;
-    ; This emulation is a good example of how FRAME! can be used to build
-    ; customized apply-like functions.
-    ;
-    function [
-        return: [<opt> any-value!]
-        action [action!]
-        block [block!]
-        /only
-    ][
-        frame: make frame! :action
-        params: parameters of :action
-        using-args: true
-
-        while [block] [
-            block: if only [
-                arg: block.1
-                try next block
-            ] else [
-                try [arg @]: evaluate block
-            ]
-
-            if refinement? params.1 [
-                using-args: to-logic set (in frame second params.1) :arg
-            ] else [
-                if using-args [
-                    set (in frame params.1) :arg
-                ]
-            ]
-
-            params: try next params
-        ]
-
-        comment [
-            ;
-            ; Too many arguments was not a problem for R3-alpha's APPLY, it
-            ; would evaluate them all even if not used by the function.  It
-            ; may or may not be better to have it be an error.
-            ;
-            if not tail? block [
-                fail "Too many arguments passed in R3-ALPHA-APPLY block."
-            ]
-        ]
-
-        return do frame  ; nulls are optionals
-    ]
 ]
 
 ?: emulate [:help]
@@ -990,7 +726,7 @@ quit: emulate [
 ]
 
 does: emulate [
-    specialize :redbol-func [spec: []]
+    specialize :func2 [spec: []]
 ]
 
 has: emulate [
@@ -998,7 +734,7 @@ has: emulate [
         vars [block!]
         body [block!]
     ][
-        redbol-func (head of insert copy vars /local) body
+        func2 (head of insert copy vars /local) body
     ]
 ]
 
