@@ -37,6 +37,7 @@ REBOL [
     }
 ]
 
+import <parse2.r>
 
 ; !!! The general workings of modules is to scan them for top-level set-words,
 ; and then bind the module itself to those words.  This module is redefining
