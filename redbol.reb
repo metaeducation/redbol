@@ -281,7 +281,7 @@ set: emulate [
             ] else [
                 set t :block.1
             ]
-            block: next try block
+            block: try next block
         ]
         return value
     ]
@@ -391,14 +391,14 @@ try: emulate [
         <local>
             error result
     ][
-        if ([error result]: trap [try do block]) [
+        if ([error result]: trap [do block else '_]) [
             case [
                 not :except [error]
-                block? :except [try do except]
-                action? :except [try except error]  ; NULL result runs ELSE (!)
+                block? :except [do except else '_]
+                action? :except [except error else '_]
             ]
         ] else [
-            result  ; Note: may be an ERROR! that was evaluated to, not raised
+            result else '_  ; Note: may be an ERROR! that was evaluated to
         ]
     ]
 ]
@@ -683,7 +683,7 @@ redbol-form: form: emulate [
                 if not find value "E" [
                     use [pos] [
                         all [
-                            pos: skip (try find value ".") 15
+                            pos: try skip (find value ".") 15
                             clear pos
                         ]
                     ]
@@ -913,7 +913,7 @@ switch: emulate [  ; Ren-C evaluates cases: https://trello.com/c/9ChhSWC4/
             either block? :c [c] [quote c]  ; suppress eval on non-blocks
         ]
         let def: f.default  ; the DO expires frame right now (for safety)
-        try (do f else (def))  ; try for BLANK! on failed SWITCH, not null
+        (do f else (def)) else '_  ; BLANK! on failed SWITCH, not null
     ]
 ]
 
@@ -985,10 +985,13 @@ forskip: emulate [denuller :iterate-skip]
 any: emulate [denuller :any]
 all: emulate [denuller :all]
 
-; Historically Rebol/Red consider `find "abc" ""` to be NONE.  While it could
-; be argued what this "should" be, the fact that BLANK! (or NULL) could be
-; used to opt out of the search suggests the opportunity is being lost to have
-; a way of opting into a match unconditionally.
+; 1. Ren-C (and Red) do not support FIND on object, which returns a LOGIC! in
+;    Rebol2 based on if the key is present.
+;
+; 2. Historically Rebol/Red consider `find "abc" ""` to be NONE.  While it
+;    could be argued what this "should" be, the fact that BLANK! can be used
+;    to opt out of the search suggests the opportunity is being lost to have
+;    a way of opting into a match unconditionally.
 ;
 ; Also--Red changed FIND/MATCH to not imply /TAIL.  This was something we'd
 ; wanted in Ren-C so it was changed as well.  But this means Red and Rebol2
@@ -996,12 +999,15 @@ all: emulate [denuller :all]
 ;
 find: emulate [
     enclose :find func [f] [
+        if object? f.pattern [  ; see [1]
+            return did in series pattern
+        ]
         all [
             any-series? f.pattern
-            empty? f.pattern
+            empty? f.pattern  ; see [2]
         ] then [return _]
 
-        return do f else '_  ; NULL -> BLANK!
+        return (do f else '_)  ; NULL -> BLANK!
     ]
 ]
 select: emulate [denuller :select]

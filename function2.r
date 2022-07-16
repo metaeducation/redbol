@@ -64,7 +64,7 @@ rewrite-spec-and-body: func [
     ]
 
     while [not tail? spec] [
-        refinement: to word! try match path! spec.1
+        refinement: try to word! match path! spec.1
 
         ; Refinements with multiple arguments are no longer allowed, and
         ; there weren't many of those so it's not a big deal.  But there
