@@ -3,7 +3,7 @@ REBOL [
     Title: "Rebol2 and Red Compatibility Shim"
     Homepage: https://trello.com/b/l385BE7a/porting-guide
     Rights: {
-        Copyright 2012-2019 Ren-C Open Source Contributors
+        Copyright 2012-2022 Ren-C Open Source Contributors
         REBOL is a trademark of REBOL Technologies
     }
     Type: module
@@ -23,10 +23,6 @@ REBOL [
         useful for command-line scripts and utilities.  However, it serves as
         a test of the system's flexibility, as well as a kind of "living
         documentation" of the nuances of what has been changed.
-
-        (The comments in this file are deliberately brief...see %r2warn.reb
-        for the warnings and comments that would be included if that file
-        was able to be folded in with this one--not possible, *yet*)
     }
     Notes: {
         * Ren-C does not allow the mutation of PATH!.  You can JOIN a path to
@@ -37,20 +33,21 @@ REBOL [
     }
 ]
 
-import <function2.r>
-import <parse2.r>
 
+=== WRAPPER FOR "EMULATION-DEFINITIONS-ARE-IN-PROGRESS" ===
 
-; !!! The general workings of modules is to scan them for top-level set-words,
-; and then bind the module itself to those words.  This module is redefining
-; the workings of the system fundamentally.  While doing those definitions
-; it's preferable to not have to say `lib.switch` or otherwise prefix each
-; call in the implementation so it doesn't use its own new definitions.  Until
-; that becomes some kind of module feature, this folds the binding to lib
-; into EMULATE, which lets you select whether you want to replace the
-; functionality or just warn about it.
+; This module is redefining the workings of the system fundamentally.  While
+; doing those definitions it's preferable to not have to say `lib.switch`
+; or otherwise prefix each call in the implementation so it doesn't use the
+; new definitions that have been made so far.
 ;
+; Until a module feature to facilitate this kind of thing becomes standard,
+; this binds the bodies of EMULATE or HELPER things into lib for you.
+
+redbol: binding of 'redbol  ; to refer to things like redbol.append
+
 helper: enfixed lib.lambda [
+    {NON-EXPORTED definition relying on words in LIB (e.g. baseline APPEND)}
     :set-word [set-word!]
     code [block!]
 ] lib.in lib [
@@ -58,19 +55,18 @@ helper: enfixed lib.lambda [
 ]
 
 emulate: enfixed lib.lambda [
+    {EXPORTED definition that relying on words in LIB (e.g. baseline APPEND)}
     :set-word [set-word!]
     code [block!]
+    <local> temp
 ] lib.in lib [
     set set-word do in lib code
     elide export reduce [as word! set-word]
-    ; ^-- elide so we return what we evaluated to.
+        ; ^-- elide so we return what we evaluated to
 ]
 
 
-any-function!: emulate [action!]
-function!: emulate [action!]
-any-function?: emulate [:action?]
-function?: emulate [:action?]
+=== DATATYPES ===
 
 string!: emulate [text!]
 string?: emulate [:text?]
@@ -109,6 +105,44 @@ any-block?: emulate [:any-array?]
 any-object!: emulate [any-context!]
 any-object?: emulate [:any-context?]
 
+none: emulate [_]  ; falsey-reified-nothingness, this role is taken by BLANK!
+none!: emulate [blank!]
+none?: emulate [:blank?]
+
+type?: emulate [
+    lambda [
+        value [<opt> any-value!]
+        /word {Note: SWITCH evaluates https://trello.com/c/fjJb3eR2}
+    ][
+        case [
+            not word [type of :value]
+            unset? 'value ['unset!]  ; https://trello.com/c/rmsTJueg
+            blank? :value ['none!]  ; https://trello.com/c/vJTaG3w5
+            group? :value ['paren!]  ; https://trello.com/c/ANlT44nH
+            (match ['word!] :value) ['lit-word!]
+            (match ['path!] :value) ['lit-path!]
+        ] else [
+            to-word type of :value
+        ]
+    ]
+]
+
+
+=== FUNCTIONS ===
+
+import <function2.r>
+
+any-function!: emulate [action!]
+any-function?: emulate [:action?]
+
+function!: emulate [action!]
+function?: emulate [:action?]
+
+native!: emulate [action!]
+native?: emulate [:action?]
+
+closure!: emulate [:action!]
+closure?: emulate [:action?]
 
 ; If a Ren-C function suspects it is running code that may happen more than
 ; once (e.g. a loop or function body) it marks that parameter `<const>`.
@@ -121,9 +155,21 @@ any-object?: emulate [:any-context?]
 ; the moment, the const parameter is not tweaked in Redbol...but the feature
 ; is aiming to come back shortly in much better form.
 
-export func: :func2
-export function: :function2
-export apply: :apply2
+func: emulate [:func2]
+function: emulate [:function2]
+apply: emulate [:apply2]
+has: emulate [:has2]
+does: emulate [:does2]
+
+; Some of CLOSURE's functionality was subsumed into all FUNCTIONs, but
+; the indefinite lifetime of all locals and arguments was not.
+; https://forum.rebol.info/t/234
+;
+closure: emulate [:function2]
+clos: emulate [:func2]
+
+
+
 
 for-each-nonconst: emulate [
 ;    reskinned [
@@ -153,44 +199,6 @@ null: emulate [
     make char! 0  ; NUL in Ren-C https://en.wikipedia.org/wiki/Null_character
 ]
 
-; We use the case of Ren-C's "isotope" variant of the BAD-WORD! ~ as a
-; parallel of historical Rebol's UNSET!.  It cannot be retrieved via a
-; GET-WORD! (as in R3-Alpha or Red), but only with a special access function
-; (like in Rebol2).
-;
-unset!: bad-word!  ; isotope! ?
-unset?: emulate [func [^x] [x = '~]]  ; checks *value* is unset, not var
-unset: lambda [var] [  ; historically blocks are legal
-    set/any var ~
-]
-
-; Note: Ren-C once reserved NONE for `if none [x = 1, y = 2] [...]`
-; Currently that is covered by `ALL/PREDICATE [...] :NOT`, but a specializatio
-; may wind up being defined for it.
-;
-none: emulate [:blank]
-none!: emulate [:blank!]
-none?: emulate [:blank?]
-
-any-function!: emulate [:action!]
-any-function?: emulate [:action?]
-
-native!: emulate [:action!]
-native?: emulate [:action?]
-
-function!: emulate [:action!]
-function?: emulate [:action?]
-
-; Some of CLOSURE's functionality was subsumed into all FUNCTIONs, but
-; the indefinite lifetime of all locals and arguments was not.
-; https://forum.rebol.info/t/234
-;
-closure: emulate [:function]
-clos: emulate [:func]
-
-closure!: emulate [:action!]
-closure?: emulate [:action?]
-
 true?: emulate [:did]  ; better name https://trello.com/c/Cz0qs5d7
 false?: emulate [:not]  ; better name https://trello.com/c/Cz0qs5d7
 
@@ -199,34 +207,6 @@ comment: emulate [
         return: <none> {Not invisible: https://trello.com/c/dWQnsspG}
         :discarded [block! any-string! binary! any-scalar!]
     ][
-    ]
-]
-
-value?: emulate [
-    func [
-        {See SET? in Ren-C: https://trello.com/c/BlktEl2M}
-        return: [logic!]
-        value
-    ][
-        return either any-word? :value [set? value] [true]  ; bizarre.  :-/
-    ]
-]
-
-type?: emulate [
-    lambda [
-        value [<opt> any-value!]
-        /word {Note: SWITCH evaluates https://trello.com/c/fjJb3eR2}
-    ][
-        case [
-            not word [type of :value]
-            unset? 'value ['unset!]  ; https://trello.com/c/rmsTJueg
-            blank? :value ['none!]  ; https://trello.com/c/vJTaG3w5
-            group? :value ['paren!]  ; https://trello.com/c/ANlT44nH
-            (match ['word!] :value) ['lit-word!]
-            (match ['path!] :value) ['lit-path!]
-        ] else [
-            to-word type of :value
-        ]
     ]
 ]
 
@@ -239,6 +219,13 @@ found?: emulate [
         return not blank? :value
     ]
 ]
+
+
+=== SETTING AND GETTING ===
+
+unset!: emulate [bad-word!]  ; there's no ISOTOPE! type, but maybe should be
+unset?: emulate [:none?]  ; checks *value* is unset, not var
+unset: emulate [lambda [var] [set var ~]]
 
 ; Note: R3-Alpha had a /PAD option, which was the inverse of /SOME.
 ; If someone needs it, they can adapt this routine as needed.
@@ -307,6 +294,17 @@ get: emulate [
         return apply :get [source /any any_GET]
     ]
 ]
+
+value?: emulate [
+    func [
+        {See SET? in Ren-C: https://trello.com/c/BlktEl2M}
+        return: [logic!]
+        value
+    ][
+        return either any-word? :value [set? value] [true]  ; bizarre.  :-/
+    ]
+]
+
 
 ; R3-Alpha and Rebol2's DO was effectively variadic.  If you gave it an
 ; action, it could "reach out" to grab arguments from after the call.  Ren-C
@@ -431,9 +429,12 @@ also: emulate [
 ]
 
 
-; PARSE is different in Ren-C than in historical Rebol.  However, the goal is
-; to have it run on a framework that's easily twistable for compatibility or
-; new features by building on top of something called UPARSE:
+=== PARSE ===
+
+import <parse2.r>
+
+; PARSE in Ren-C is vastly redesigned, but the goal is that it act as a
+; framework (codename "UPARSE") that can be easily twistable for compatibility:
 ;
 ; https://forum.rebol.info/t/introducing-uparse-the-hackable-usermode-parse/1529
 ;
@@ -464,6 +465,9 @@ parse: emulate [
     ]
 ]
 
+
+=== EVALUATING ===
+
 reduce: emulate [
     lambda [
         value "Not just BLOCK!s evaluated: https://trello.com/c/evTPswH3"
@@ -481,8 +485,7 @@ reduce: emulate [
 
 compose: emulate [
     lambda [
-        value "Ren-C composes ANY-ARRAY!: https://trello.com/c/8WMgdtMp"
-            [any-value!]
+        value "Ren-C does not splice by default (needs SPREAD)" [any-value!]
         /deep "Ren-C recurses into PATH!s: https://trello.com/c/8WMgdtMp"
         /only
         /into "https://forum.rebol.info/t/stopping-the-into-virus/705"
@@ -512,7 +515,11 @@ compose: emulate [
             ;    rebol2> compose [(either true [] [])]
             ;    == []
             ;
-            /predicate either only [:quote] [:splice-adjuster]
+            /predicate try if not only [
+                lambda [group <local> product] [
+                    (non any-array! eval group) else array -> [spread array]
+                ]
+            ]
         ]
 
         either into [insert into composed] [composed]
@@ -547,10 +554,6 @@ collect: emulate [
     ]
 ]
 
-; because reduce has been changed but lib.reduce is not in legacy
-; mode, this means the repend and join function semantics are
-; different.  This snapshots their implementation.
-
 repend: emulate [
     lambda [
         series [any-series! port! map! object! bitset!]
@@ -559,9 +562,7 @@ repend: emulate [
         /only
         /dup [any-number! pair!]
     ][
-        ; R3-alpha REPEND with block behavior called out
-        ;
-        apply :append/part/dup [
+        apply :redbol.append [  ; Want overridden APPEND semantics (vs Ren-C)
             series
             either block? :value [reduce :value] [:value]
             /part part
@@ -570,6 +571,7 @@ repend: emulate [
         ]
     ]
 ]
+
 
 ; REJOIN in R3-Alpha meant "reduce and join" and was arity-1.  It was used
 ; in many places, such as producing strings out of blocks of string parts and
@@ -634,7 +636,7 @@ ajoin: emulate [:unspaced]
 
 reform: emulate [:spaced]
 
-redbol-form: form: emulate [
+form: emulate [
     lambda [
         value [<opt> any-value!]
         /unspaced "Outer level, append "" [1 2 [3 4]] => {123 4}"
@@ -693,7 +695,7 @@ redbol-form: form: emulate [
             block? value [
                 delimit: either unspaced [:lib.unspaced] [:lib.spaced]
                 delimit map-each item value [
-                    redbol-form :item
+                    redbol.form :item
                 ]
             ]
         ] else [
@@ -725,18 +727,6 @@ quit: emulate [
     ]
 ]
 
-does: emulate [
-    specialize :func2 [spec: []]
-]
-
-has: emulate [
-    lambda [
-        vars [block!]
-        body [block!]
-    ][
-        func2 (head of insert copy vars /local) body
-    ]
-]
 
 ; OBJECT is a noun-ish word; Ren-C tried HAS for a while and did not like it.
 ; A more generalized version of CONSTRUCT is being considered:
@@ -868,6 +858,7 @@ decompress: emulate [
             ; by testing for gzip header or otherwise having a fallback, as
             ; Red went with a Gzip default.
             ;
+            part: default [tail of data]
             return zinflate/part/max data (skip part -4) limit
         ]
 
@@ -932,7 +923,7 @@ foreach: emulate [
             not block? vars
             for-each-nonconst item vars [if set-word? item [break] true]
         ] then [
-            return for-each-nonconst :vars data body  ; normal FOREACH
+            return (for-each-nonconst :vars data body else [_])
         ]
 
         ; Weird FOREACH, transform to WHILE: https://trello.com/c/AXkiWE5Z
@@ -985,6 +976,33 @@ forskip: emulate [denuller :iterate-skip]
 any: emulate [denuller :any]
 all: emulate [denuller :all]
 
+
+; !!! This used to be in %mezz-legacy.r where it was being tested.  Now the
+; core functions do not have /ONLY at all and the refinement only exists in
+; the Redbol versions of APPEND/INSERT/CHANGE/FIND.  Would be faster to fold
+; this in together with the splicing adjustment...though having it built out
+; of a more convoluted composition breaks the parts up better and exercises
+; more situations.
+;
+onlify: helper [
+    func [
+        {Add /ONLY behavior to APPEND, INSERT, CHANGE, FIND, SELECT...}
+        return: [action!]
+        action [action!]
+        /param [word!]
+    ][
+        param: default ['value]
+        return adapt (
+            augment :action [/only]
+        ) compose/deep [
+            all [not only, any-array? series, any-array? unquote (param)] then [
+                (param): as block! unquote (param)
+            ]
+            ; ...fall through to normal handling
+        ]
+    ]
+]
+
 ; 1. Ren-C (and Red) do not support FIND on object, which returns a LOGIC! in
 ;    Rebol2 based on if the key is present.
 ;
@@ -998,7 +1016,7 @@ all: emulate [denuller :all]
 ; will differ on that point.
 ;
 find: emulate [
-    enclose :find func [f] [
+    enclose (onlify/param :find 'pattern) func [f] [
         if object? f.pattern [  ; see [1]
             return did in series pattern
         ]
@@ -1055,26 +1073,20 @@ not-equal?: emulate [noquoter :not-equal?]
 !=: emulate [enfixed noquoter :!=]
 
 
-; This takes arguments which would be passed to something like APPEND in
-; Redbol and does the transformation to get the same behavior in LIB.APPEND.
-; So if you have a BLANK! (like a Redbol "NONE") that would be appended as-is,
-; while disappear in Redbol.
-;
-splice-adjuster: helper [
-    function [v] [
-        if blank? :v [return quote v]
-        return :v
-    ]
-]
-
-
 ; https://forum.rebol.info/t/justifiable-asymmetry-to-on-block/751
 ;
 oldsplicer: helper [
     lambda [action [action!]] [
         adapt :action [
-            all [not only, any-array? series, any-path? :value] then [
-                value: as block! value  ; guarantees splicing
+            all [
+                not only, any-array? series,
+                quoted? value, any-path? unquote value
+            ] then [
+                value: as block! unquote value  ; guarantees splicing
+            ] else [
+                (match [map! object!] series) then [
+                    value: ensure block! unquote value
+                ]
             ]
 
             ; Red and R3-Alpha would allow you to append an INTEGER! to a
@@ -1094,116 +1106,24 @@ oldsplicer: helper [
             ; It would also spell WORD!s as their Latin1 values.
             ;
             all [
-                not issue? value  ; want e.g. # appended as #{00} to BINARY!
-                not integer? value
                 match [any-string! binary!] series
-                (type of series) != (type of :value)  ; changing breaks /PART
+                not block? value
+                not issue? unquote value  ; want e.g. # adds as #{00} to BINARY!
+                not integer? unquote value
+                (type of series) != (type of unquote :value)  ; breaks /PART
             ] then [
-                value: redbol-form/unspaced :value
+                value: quote redbol.form/unspaced unquote :value
             ]
         ]
     ]
 ]
 
-append: emulate [oldsplicer :append]
-insert: emulate [oldsplicer :insert]
-change: emulate [oldsplicer :change]
+append: emulate [oldsplicer onlify :append]
+insert: emulate [oldsplicer onlify :insert]
+change: emulate [oldsplicer onlify :change]
+
 
 quote: emulate [:the]
-
-cloaker: helper [function [  ; specialized as CLOAK and DECLOAK
-    {Simple and insecure data scrambler, was native C code in Rebol2/R3-Alpha}
-
-    return: [binary!] "Same series as data"
-    decode [logic!] "true if decode, false if encode"
-    data [binary!] "Binary series to descramble (modified)"
-    key [text! binary! integer!] "Encryption key or pass phrase"
-    /with "Use a text! key as-is (do not generate hash)"
-][
-    if length of data = 0 [return]
-
-    switch type of key [
-        integer! [key: to binary! to string! key]  ; UTF-8 string conversion
-        text! [key: to binary! key]  ; UTF-8 encoding of string
-        binary! []
-        fail
-    ]
-
-    klen: length of key
-    if klen = 0 [
-        fail "Cannot CLOAK/DECLOAK with length 0 key"
-    ]
-
-    if not with [  ; hash key (only up to first 20 bytes?)
-        src: make binary! 20
-        count-up i 20 [
-            append src key.(1 + modulo (i - 1) klen)
-        ]
-
-        key: checksum 'sha1 src
-        assert [length of key = 20]  ; size of an SHA1 hash
-        klen: 20
-    ]
-
-    dlen: length of data
-
-    ; Indexing in this routine doesn't try to get too clever; it uses the
-    ; same range as the C but just indexes to `1 +` that.  Anyone who wants
-    ; to "optimize" it can also worry about debugging the incompatibilities.
-    ; The routines are not used anywhere relevant, AFAIK.
-
-    if decode [
-        i: dlen - 1
-        while [i > 0] [
-            data.(1 + i): data.(1 + i) xor+
-                (data.(1 + i - 1) xor+ key.(1 + modulo i klen))
-            i: i - 1
-        ]
-    ]
-
-    ; Change starting byte based all other bytes.
-
-    n: first #{A5}
-
-    ; In the C code this just kept adding to a 32-bit number, allowing
-    ; overflow...then using a C cast to a byte.  Try to approximate this by
-    ; just doing the math in modulo 256
-    ;
-    i: 1
-    while [i < dlen] [
-        n: modulo (n + data.(1 + i)) 256
-        i: i + 1
-    ]
-
-    data.1: me xor+ n
-
-    if not decode [
-        i: 1
-        while [i < dlen] [
-            data.(1 + i): data.(1 + i) xor+
-                (data.(1 + i - 1) xor+ key.(1 + modulo i klen))
-            i: i + 1
-        ]
-    ]
-
-    return data
-]]
-
-decloak: emulate [
-    redescribe [
-        {Decodes a binary string scrambled previously by encloak.}
-    ](
-        specialize :cloaker [decode: true]
-    )
-]
-
-encloak: emulate [
-    redescribe [
-        {Scrambles a binary string based on a key.}
-    ](
-        specialize :cloaker [decode: false]
-    )
-]
 
 
 write: emulate [
@@ -1212,7 +1132,7 @@ write: emulate [
         /direct "Opens the port without buffering."
         /no-wait "Returns immediately without waiting if no data."
         /with "Specifies alternate line termination."
-            [char! string!]
+            [char! text!]
         /allow "Specifies the protection attributes when created."
             [block!]  ; this is still on WRITE, but not implemented (?)
         /mode "Block of above refinements."
@@ -1244,7 +1164,7 @@ read: emulate [
         /direct "Opens the port without buffering."
         /no-wait "Returns immediately without waiting if no data."
         /with "Specifies alternate line termination."
-            [char! string!]
+            [char! text!]
         /mode "Block of above refinements."
             [block!]
         /custom "Allows special refinements."
@@ -1346,10 +1266,17 @@ load: emulate [
     ]
 ]
 
+to-integer: emulate [
+    adapt :to-integer [  ; TO-INTEGER of #1 is nominally 1 in Ren-C
+        if char? value [value: codepoint of value]
+    ]
+]
+
+
+=== FINISH UP ===
+
 ; We do this last, just in case any of the above would accidentally use
-; a Redbol-style path.
-;
-; !!! Could paths somehow be associated with a module-of-origin, such that
-; it would be possible to have a per-module switch on path tolerance?
+; a Redbol-style path.  (Future plan is that FUNC2 would use a hooked evaluator
+; that would have specialized handling.)
 ;
 system.options.redbol-paths: true

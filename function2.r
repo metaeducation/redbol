@@ -7,7 +7,7 @@ Rebol [
     Name: Redbol-Function
 
     Exports: [
-        func2 function2
+        func2 function2 does2 has2
         apply2
     ]
 
@@ -31,9 +31,11 @@ Rebol [
 rewrite-spec-and-body: func [
     return: "New spec" [block!]
     body-out: "New body" [block!]
-    spec "(modified)" [block!]
-    body "(modified)" [block!]
+    spec [block!]
+    body [block!]
 ][
+    spec: copy spec
+
     ; R3-Alpha didn't implement the Rebol2 `func [[throw catch] x y][...]`
     ; but it didn't error on the block in the first position.  It just
     ; ignored it.  For now, do the same in the emulation.
@@ -49,7 +51,7 @@ rewrite-spec-and-body: func [
     let swap-if-after-local: does [
         if local-tag-pos [
             assert [local-tag-pos.1 = <local>]
-            local-tag-pos: insert/only local-tag-pos take spec
+            local-tag-pos: insert local-tag-pos ^ take spec
             assert [local-tag-pos.1 = <local>]
         ]
     ]
@@ -112,7 +114,7 @@ rewrite-spec-and-body: func [
             spec: my next
         ]
         else [
-            insert/only spec [any-value!]  ; old refinement-arg default
+            insert spec ^[any-value!]  ; old refinement-arg default
             swap-if-after-local
             spec: my next
         ]
@@ -163,7 +165,7 @@ rewrite-spec-and-body: func [
         ;
         return (as group! body)
     ]
-    append spec [<local> exit]  ; FUNC needs it (function doesn't...)
+    append spec spread [<local> exit]  ; FUNC needs it (function doesn't...)
     return spec
 ]
 
@@ -220,6 +222,16 @@ function2: func [
     ]
 
     return function-nonconst spec body
+]
+
+
+does2: specialize :func2 [spec: []]
+
+has2: lambda [
+    vars [block!]
+    body [block!]
+][
+    func2 (head of (insert copy vars '/local)) body
 ]
 
 

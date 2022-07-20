@@ -20,7 +20,7 @@ Rebol [
 
 redbol-combinators: copy default-combinators
 
-append redbol-combinators reduce [
+append redbol-combinators spread reduce [
 
     === ANY AND SOME HAVE "NO PROGRESS" CONSTRAINT ===
 
@@ -256,7 +256,7 @@ append redbol-combinators reduce [
         <local> subseries
     ][
         if tail? input [
-            fail "At END cannot use INTO"
+            return null  ; `parse [] [into [some "a"]]` is false in Rebol2/Red
         ]
         if not any-series? subseries: input.1 [
             fail "Need ANY-SERIES! datatype for use with INTO in UPARSE"
