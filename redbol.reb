@@ -883,7 +883,7 @@ denuller: helper [
     lambda [action [action!]] [
         chain [
             :action
-                |
+
             lambda [^x] [  ; needs to be META to handle ~none~ isotopes/etc.
                 x then [unmeta x] else [_]
             ]
