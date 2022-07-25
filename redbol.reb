@@ -615,19 +615,17 @@ rejoin: emulate [
                 base: to text! :base
             ]
 
-            return join base reduce block  ; JOIN with what's left of the block
+            return join base spread reduce block  ; JOIN what's left of block
         ]
     ]
 ]
 
 join: emulate [
-    function [
-        value
-        rest
-    ][
+    lambda [value rest] [
+        print "WE ARE THE CHAMPIONS!"
         apply :append [
-            if series? :value [copy value] else [form :value]
-            if block? :rest [reduce :rest] else [rest]
+            if series? value [copy value] else [form value]
+            if block? rest [spread reduce rest] else [rest]
         ]
     ]
 ]
