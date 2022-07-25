@@ -44,7 +44,7 @@ REBOL [
 ; Until a module feature to facilitate this kind of thing becomes standard,
 ; this binds the bodies of EMULATE or HELPER things into lib for you.
 
-redbol: binding of 'redbol  ; to refer to things like redbol.append
+redbol: attach of 'redbol  ; to refer to things like redbol.append
 
 helper: enfixed lib.lambda [
     {NON-EXPORTED definition relying on words in LIB (e.g. baseline APPEND)}
