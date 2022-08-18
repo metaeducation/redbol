@@ -42,17 +42,18 @@ append redbol-combinators spread reduce [
         append state.loops binding of 'return
 
         cycle [
-            any [
-                didn't [# pos]: parser input  ; failed rule => not success
-                same? pos input  ; no progress => stop successfully
-            ] then [
-                take/last state.loops
-
-                remainder: input
-                return ~any~
+            [# pos]: parser input except [
+                break  ; failed rule => stop successfully
             ]
-            input: pos
+            if same? pos input [
+                break  ; no progress => stop successfully
+            ]
+            input: pos  ; accept the parse progress and try again
         ]
+
+        take/last state.loops
+        remainder: input
+        return ~any~
     ]
 
     'some combinator [
@@ -60,29 +61,29 @@ append redbol-combinators spread reduce [
         return: "Redbol rules don't return results"
             [<opt> bad-word!]
         parser [action!]
-        <local> pos
+        <local> pos no-matches
     ][
         append state.loops binding of 'return
+        no-matches: true
 
-        any [
-            didn't [# pos]: parser input  ; failed first => stop, not success
-            same? pos input  ; no progress first => stop, not success
-        ] then [
-            take/last state.loops
-            return null
-        ]
-        input: pos  ; any future failings won't fail the overall rule
         cycle [
-            any [
-                didn't [# pos]: parser input  ; no match => stop, not success
-                same? pos input  ; no progress => stop successfully
-            ] then [
-                take/last state.loops
-                remainder: input
-                return ~some~
+            [# pos]: parser input except [
+                break  ; failed rule => stop successfully
             ]
-            input: pos
+            if same? pos input [
+                break  ; no progress => stop successfully
+            ]
+            no-matches: false
+            input: pos  ; accept the parse progress and try again
         ]
+
+        if no-matches [
+            return fail "SOME did not run at least one match"
+        ]
+
+        take/last state.loops
+        remainder: input
+        return ~some~
     ]
 
     'while combinator [
@@ -90,12 +91,12 @@ append redbol-combinators spread reduce [
         return: "Result of last successful match, or NULL if no matches"
             [<opt> any-value!]
         parser [action!]
-        <local> last-result' result' pos
+        <local> pos
     ][
         append state.loops binding of 'return
 
         cycle [
-            ([# pos]: parser input) else [
+            [# pos]: parser input except [
                 take/last state.loops
                 remainder: input  ; WHILE never fails (but REJECT?)
                 return ~while~
@@ -128,8 +129,8 @@ append redbol-combinators spread reduce [
         'target [word! set-word!]
         parser [action!]
     ][
-        ([^ remainder]: parser input) else [
-            return null
+        [^ remainder]: parser input except e -> [
+            return fail e
         ]
         set target copy/part input remainder
         return ~copy~
@@ -143,8 +144,8 @@ append redbol-combinators spread reduce [
         parser [action!]
         <local> pos
     ][
-        ([^ remainder]: parser input) else [
-            return null
+        [^ remainder]: parser input except e -> [
+            return fail e
         ]
         if same? remainder input [  ; no advancement gives NONE
             set target null
@@ -203,17 +204,17 @@ append redbol-combinators spread reduce [
             fail "Can't make MAX less than MIN in range for INTEGER! combinator"
         ]
 
-        result': @void ; `0 <any>` => void intent
+        result': void' ; `0 <any>` => void intent
         repeat value [  ; do the required matches first
-            ([^result' input]: parser input) else [
-                return null
+            [^result' input]: parser input except e -> [
+                return fail e
             ]
         ]
         if max [  ; for "bonus" iterations, failing is okay, save last result
             last-result': result'
             repeat (max - value) [
-                ([^result' temp-remainder]: parser input) else [
-                    break  ; don't return null if it's in the "overage range"
+                [^result' temp-remainder]: parser input except [
+                    break  ; don't return failure if it's in the "overage range"
                 ]
                 last-result': result'
                 input: temp-remainder
@@ -256,7 +257,7 @@ append redbol-combinators spread reduce [
         <local> subseries
     ][
         if tail? input [
-            return null  ; `parse [] [into [some "a"]]` is false in Rebol2/Red
+            return fail  "INTO used at end of PARSE input"
         ]
         if not any-series? subseries: input.1 [
             fail "Need ANY-SERIES! datatype for use with INTO in UPARSE"
@@ -265,12 +266,12 @@ append redbol-combinators spread reduce [
         ; If the entirety of the item at the input array is matched by the
         ; supplied parser rule, then we advance past the item.
         ;
-        any [
-            didn't [# subseries]: subparser subseries
-            not tail? subseries
-        ] then [
-            return null
+        [# subseries]: subparser subseries except e -> [return fail e]
+
+        if not tail? subseries [
+            return fail "INTO rule did not consume entirety of subseries"
         ]
+
         remainder: next input
         return ~into~
     ]
@@ -302,7 +303,7 @@ append redbol-combinators spread reduce [
         return: "Redbol rules don't return results"
             [<opt> bad-word!]
     ][
-        return null
+        return fail "Explicit FAIL combinator usage in PARSE"
     ]
 ]
 
