@@ -564,7 +564,7 @@ repend: emulate [
     ][
         apply :redbol.append [  ; Want overridden APPEND semantics (vs Ren-C)
             series
-            either block? :value [reduce :value] [:value]
+            either block? value [reduce value] [value]
             /part part
             /only only
             /dup dup
@@ -994,7 +994,7 @@ onlify: helper [
             augment :action [/only]
         ) compose/deep [
             all [not only, any-array? series, any-array? unquote (param)] then [
-                (param): as block! unquote (param)
+                (param): meta spread as block! unquote (param)
             ]
             ; ...fall through to normal handling
         ]
@@ -1080,10 +1080,10 @@ oldsplicer: helper [
                 not only, any-array? series,
                 quoted? value, any-path? unquote value
             ] then [
-                value: as block! unquote value  ; guarantees splicing
+                value: meta spread as block! unquote value  ; splice it
             ] else [
                 (match [map! object!] series) then [
-                    value: ensure block! unquote value
+                    value: meta spread ensure block! unquote value
                 ]
             ]
 
@@ -1105,7 +1105,7 @@ oldsplicer: helper [
             ;
             all [
                 match [any-string! binary!] series
-                not block? value
+                not block? unquote value
                 not issue? unquote value  ; want e.g. # adds as #{00} to BINARY!
                 not integer? unquote value
                 (type of series) != (type of unquote :value)  ; breaks /PART
