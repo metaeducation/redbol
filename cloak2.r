@@ -98,19 +98,14 @@ cloaker: function [  ; specialized as CLOAK and DECLOAK
     return data
 ]
 
-export decloak2: emulate [
-    redescribe [
-        {Decodes a binary string scrambled previously by encloak.}
-    ](
-        specialize :cloaker [decode: true]
-    )
-]
+export decloak2: redescribe [
+    {Decodes a binary string scrambled previously by encloak.}
+](
+    specialize :cloaker [decode: true]
+)
 
-export encloak2: emulate [
-    redescribe [
-        {Scrambles a binary string based on a key.}
-    ](
-        specialize :cloaker [decode: false]
-    )
-]
-
+export encloak2: redescribe [
+    {Scrambles a binary string based on a key.}
+](
+    specialize :cloaker [decode: false]
+)
