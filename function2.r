@@ -17,6 +17,9 @@ Rebol [
     }
 ]
 
+ren: lib  ; make it clearer when we are using the Ren-C library
+lib: ~use-ren-instead-of-lib~
+
 
 ; Refinement arguments in Ren-C are conveyed via the refinement value itself:
 ;
@@ -187,8 +190,8 @@ func2: func [
     spec [block!]
     body [block!]
 ][
-    if find spec <local> [
-        return func-nonconst spec body  ; assume "new style" function
+    if find spec <local> [  ; Red uses `return:` else it would be a good hint
+        return lib.func spec body  ; assume "new style" function
     ]
 
     [spec body]: rewrite-spec-and-body spec body
@@ -203,8 +206,8 @@ function2: func [
     /with [object! block! map!]  ; from R3-Alpha, not adopted by Red
     /extern [block!]  ; from R3-Alpha, adopted by Red
 ][
-    if find spec <local> [
-        return function-nonconst spec body  ; assume "new style" function
+    if find spec <local> [  ; Red uses `return:` else it would be a good hint
+        return lib.function spec body  ; assume "new style" function
     ]
 
     if block? with [with: make object! with]

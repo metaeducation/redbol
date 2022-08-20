@@ -34,35 +34,37 @@ REBOL [
 ]
 
 
+export ren: lib  ; save the Ren-C library (in this module, lib becomes "redbol"
+export lib: null  ; can't directly set lib to isotope with export yet (bug)
+lib: ~use-ren-or-redbol-instead-of-lib~
+redbol: attach of 'redbol  ; not exported--local for disambiguating this file
+
+
 === WRAPPER FOR "EMULATION-DEFINITIONS-ARE-IN-PROGRESS" ===
 
 ; This module is redefining the workings of the system fundamentally.  While
-; doing those definitions it's preferable to not have to say `lib.switch`
+; doing those definitions it's preferable to not have to say `ren.switch`
 ; or otherwise prefix each call in the implementation so it doesn't use the
 ; new definitions that have been made so far.
 ;
 ; Until a module feature to facilitate this kind of thing becomes standard,
 ; this binds the bodies of EMULATE or HELPER things into lib for you.
 
-redbol: attach of 'redbol  ; to refer to things like redbol.append
 
-helper: enfixed lib.lambda [
-    {NON-EXPORTED definition relying on words in LIB (e.g. baseline APPEND)}
-    :set-word [set-word!]
+helper: ren.lambda [
+    {NON-EXPORTED definition relying on words in REN (e.g. baseline APPEND)}
     code [block!]
-] lib.in lib [
-    set set-word do in lib code
+] ren.in ren [
+    do in ren code
 ]
 
-emulate: enfixed lib.lambda [
-    {EXPORTED definition that relying on words in LIB (e.g. baseline APPEND)}
+emulate: enfixed ren.lambda [
+    {EXPORTED definition that relying on words in REN (e.g. baseline APPEND)}
     :set-word [set-word!]
     code [block!]
     <local> temp
-] lib.in lib [
-    set set-word do in lib code
-    elide export reduce [as word! set-word]
-        ; ^-- elide so we return what we evaluated to
+] ren.in ren [
+    export (set-word): do in ren code
 ]
 
 
@@ -193,7 +195,7 @@ to-rebol-file: emulate [
     ]
 ]
 
-why?: emulate [does [lib.why]]  ; not exported yet, :why not bound
+why?: emulate [does [ren.why]]  ; not exported yet, :why not bound
 
 null: emulate [
     make char! 0  ; NUL in Ren-C https://en.wikipedia.org/wiki/Null_character
@@ -240,7 +242,7 @@ set: emulate [
         /some "None values in a block or object value argument, are not set"
     ][
         set_ANY: any
-        any: :lib.any
+        any: :ren.any
 
         all [  ; !!! is it necessary to impose this historical restriction?
             not set_ANY
@@ -283,7 +285,7 @@ get: emulate [
         /any
     ][
         let any_GET: any
-        any: :lib.any
+        any: :ren.any
 
         if block? :source [
             return source  ; this is what it did :-/
@@ -330,7 +332,7 @@ do: emulate [
         /next [word!]
     ][
         var: next
-        next: :lib.next
+        next: :ren.next
 
         if var [  ; DO/NEXT
             if args [fail "Can't use DO/NEXT with ARGS"]
@@ -451,10 +453,10 @@ parse: emulate [
         /all "Ignored refinement in <r3-legacy>"
     ][
         case_PARSE: case
-        case: :lib.case
+        case: :ren.case
 
         comment [all_PARSE: all]  ; Not used
-        all: :lib.all
+        all: :ren.all
 
         return switch type of rules [
             blank! [split input charset reduce [tab space CR LF]]
@@ -691,7 +693,7 @@ form: emulate [
                 value
             ]
             block? value [
-                delimit: either unspaced [:lib.unspaced] [:lib.spaced]
+                delimit: either unspaced [:ren.unspaced] [:ren.spaced]
                 delimit map-each item value [
                     redbol.form :item
                 ]
@@ -1205,37 +1207,36 @@ read: emulate [
 ; interpretation.  This means bad UTF-8 input that isn't Latin1 will be
 ; misinterpreted...but since Rebol2 would accept any bytes, it's no worse.
 ;
-hijack :lib.transcode enclose copy :lib.transcode function [f [frame!]] [
-    trap [
-        result: lib.do copy f  ; COPY so we can DO it again if needed
-    ] then e -> [
-        if e.id != 'bad-utf8 [
-            fail e
-        ]
-
-        f.source: copy f.source
-        assert [binary? f.source]  ; invalid UTF-8 can't be in an ANY-STRING!
-        pos: f.source
-        iterate pos [
-            if pos.1 < 128 [continue]  ; ASCII
-            if pos.1 < 192 [
-                lib.insert pos #{C2}
-                pos: next pos
-                continue
+hijack :ren.transcode enclose copy :ren.transcode helper [
+    lambda [f [frame!]] [
+        do copy f except e -> [ ; COPY so we can DO it again if needed
+            if e.id != 'bad-utf8 [
+                fail e
             ]
-            lib.change pos pos.1 - 64  ; want byte not FORM, use LIB.change!
-            lib.insert pos #{C3}
-            pos: next pos
-        ]
 
-        result: lib.do f  ; this time if it fails, we won't TRAP it
+            f.source: copy f.source
+            assert [binary? f.source]  ; invalid UTF-8 can't be in a string
+            pos: f.source
+            iterate pos [
+                if pos.1 < 128 [continue]  ; ASCII
+                if pos.1 < 192 [
+                    insert pos #{C2}
+                    pos: next pos
+                    continue
+                ]
+                change pos pos.1 - 64
+                insert pos #{C3}
+                pos: next pos
+            ]
+
+            do f  ; this time if it fails, we won't trap it
+        ]
     ]
-    return result
 ]
 
 
 call: emulate [  ; brings back the /WAIT switch (Ren-C waits by default)
-    trap [get 'call*]  ; use GET/ANY because not available in web build
+    trap [get 'call*]  ; TRAP because not available in web build
 ]
 
 
@@ -1278,3 +1279,9 @@ to-integer: emulate [
 ; that would have specialized handling.)
 ;
 system.options.redbol-paths: true
+
+; When the caller asks for `lib/append` or similar, that will give them the
+; Redbol version as it was when they started.  If you want the versions from
+; Ren-C, use `ren.append` etc
+;
+lib: redbol
