@@ -30,7 +30,7 @@ Rebol [
 ;
 rewrite-spec-and-body: func [
     return: "New spec" [block!]
-    body-out: "New body" [block!]
+    @body-out "New body" [block!]
     spec [block!]
     body [block!]
 ][
