@@ -114,7 +114,7 @@ rewrite-spec-and-body: func [
             spec: my next
         ]
         else [
-            insert spec ^[any-value!]  ; old refinement-arg default
+            insert spec [any-value!]  ; old refinement-arg default
             swap-if-after-local
             spec: my next
         ]
@@ -218,7 +218,7 @@ function2: func [
         append spec compose [<in> (with)]  ; <in> replaces /WITH
     ]
     if extern [
-        append spec compose [<with> ((extern))]  ; <with> replaces /EXTERN
+        append spec compose [<with> (spread extern)]  ; <with> replaces /EXTERN
     ]
 
     return function-nonconst spec body
