@@ -15,6 +15,14 @@ Rebol [
         One of the early applications of UPARSE is to be able to implement
         backward-compatible parse behavior by means of a series of tweaks.
     }
+
+    Notes: {
+      * Redbol combinators do not return results.  There is no attempt to
+        do so in order to achieve some kind of half-baked idea of using Rebol2
+        style syntax but using rule products as well; the code is kept as
+        simple as possible by just giving back an isotope with the name of
+        the cominator.
+    }
 ]
 
 
@@ -34,47 +42,43 @@ append redbol-combinators spread reduce [
 
     'any combinator [
         {(REDBOL) Any number of matches (including 0), stop if no progress}
-        return: "Redbol rules don't return results"
-            [bad-word!]
+        return: []  ; isotope
         parser [action!]
-        <local> pos
     ][
         append state.loops binding of 'return
 
         cycle [
-            [# pos]: parser input except [
+            [# remainder]: parser input except [
                 break  ; failed rule => stop successfully
             ]
-            if same? pos input [
+            if same? remainder input [
                 break  ; no progress => stop successfully
             ]
-            input: pos  ; accept the parse progress and try again
+            input: remainder  ; accept the parse progress and try again
         ]
 
         take/last state.loops
-        remainder: input
         return ~any~
     ]
 
     'some combinator [
         {(REDBOL) Must run at least one match, stop if no progress}
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; isotope
         parser [action!]
-        <local> pos no-matches
+        <local> no-matches
     ][
         append state.loops binding of 'return
         no-matches: true
 
         cycle [
-            [# pos]: parser input except [
+            [# remainder]: parser input except [
                 break  ; failed rule => stop successfully
             ]
-            if same? pos input [
+            if same? remainder input [
                 break  ; no progress => stop successfully
             ]
             no-matches: false
-            input: pos  ; accept the parse progress and try again
+            input: remainder  ; accept the parse progress and try again
         ]
 
         if no-matches [
@@ -82,28 +86,25 @@ append redbol-combinators spread reduce [
         ]
 
         take/last state.loops
-        remainder: input
         return ~some~
     ]
 
     'while combinator [
         {(REDBOL) Any number of matches (including 0), no progress requirement}
-        return: "Result of last successful match, or NULL if no matches"
-            [<opt> any-value!]
+        return: []  ; isotope
         parser [action!]
-        <local> pos
     ][
         append state.loops binding of 'return
 
         cycle [
-            [# pos]: parser input except [
-                take/last state.loops
-                remainder: input  ; WHILE never fails (but REJECT?)
-                return ~while~
+            [# input]: parser input except [
+                break
             ]
-            input: pos
         ]
-        fail ~unreachable~
+
+        take/last state.loops
+        remainder: input  ; WHILE never fails (but REJECT?)
+        return ~while~
     ]
 
     === OLD STYLE SET AND COPY COMBINATORS ===
@@ -117,15 +118,11 @@ append redbol-combinators spread reduce [
     ;
     ; https://github.com/giesse/red-topaz-parse
     ;
-    ; Ren-C goes along with this change, including that the position is
-    ; captured by `pos: <here>` instead of simply by `pos:`.  However, the
-    ; concept of how combinators can produce a result to be captured is
-    ; rethought.
+    ; Ren-C goes along with this, capturing the position with `pos: <here>`.
 
     'copy combinator [
         {(REDBOL) Copy input series elements into a SET-WORD! or WORD!}
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; isotope
         'target [word! set-word!]
         parser [action!]
     ][
@@ -138,11 +135,9 @@ append redbol-combinators spread reduce [
 
     'set combinator [
         {(REDBOL) Take single input element into a SET-WORD! or WORD!}
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; isotope
         'target [word! set-word!]
         parser [action!]
-        <local> pos
     ][
         [^ remainder]: parser input except e -> [
             return fail e
@@ -163,8 +158,7 @@ append redbol-combinators spread reduce [
     ; into the variable or restoring it.
 
     set-word! combinator [
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; isotope
         value [set-word!]
     ][
         set value input
@@ -173,15 +167,21 @@ append redbol-combinators spread reduce [
     ]
 
     get-word! combinator [
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; isotope
         value [get-word!]
     ][
-        ; Restriction: seeks must be within the same series.
-        ;
-        if not same? head input head get value [
-            fail "SEEK (via GET-WORD!) in UPARSE must be in the same series"
+        value: get value except e -> [
+            fail e  ; report error from GET (e.g. getting an unset value)
         ]
+
+        if not any-series? get value [
+            fail "SEEK (via GET-WORD!) in PARSE2 must return a series"
+        ]
+
+        if not same? head input head get value [
+            fail "SEEK (via GET-WORD!) in PARSE2 must be in the same series"
+        ]
+
         remainder: get value
         return ~seek~
     ]
@@ -210,37 +210,29 @@ append redbol-combinators spread reduce [
     ; UPARSE, so this is being only done in the compatibility mode for now.
 
     integer! combinator [
-        return: "Last parser result"
-            [<opt> any-value!]
+        return: []  ; isotope
         value [integer!]
         'max [<skip> integer!]
         parser [action!]
-        <local> result' last-result' temp-remainder
     ][
         all [max, max < value] then [
             fail "Can't make MAX less than MIN in range for INTEGER! combinator"
         ]
 
-        result': void' ; `0 <any>` => void intent
         repeat value [  ; do the required matches first
-            [^result' input]: parser input except e -> [
+            [# input]: parser input except e -> [
                 return fail e
             ]
         ]
-        if max [  ; for "bonus" iterations, failing is okay, save last result
-            last-result': result'
+        if max [  ; for "bonus" iterations, failing is okay
             repeat (max - value) [
-                [^result' temp-remainder]: parser input except [
+                [# input]: parser input except [
                     break  ; don't return failure if it's in the "overage range"
                 ]
-                last-result': result'
-                input: temp-remainder
             ]
-            result': last-result'
         ]
 
-        remainder: input
-        return unmeta result'
+        return ~integer!~
     ]
 
     === OLD-STYLE INSERT AND CHANGE (TBD) ===
@@ -268,8 +260,7 @@ append redbol-combinators spread reduce [
 
     'into combinator [
         {(REDBOL) Arity-1 Form of Recursion with a rule}
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; isotope
         subparser [action!]
         <local> subseries
     ][
@@ -317,8 +308,7 @@ append redbol-combinators spread reduce [
 
     'fail combinator [
         {(REDBOL) Interrupt matching with failure}
-        return: "Redbol rules don't return results"
-            [<opt> bad-word!]
+        return: []  ; divergent
     ][
         return fail "Explicit FAIL combinator usage in PARSE"
     ]
