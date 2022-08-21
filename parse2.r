@@ -186,6 +186,23 @@ append redbol-combinators spread reduce [
         return ~seek~
     ]
 
+    === OLD-STYLE "NONE!" COMBINATOR (what Ren-C calls BLANK!) ===
+
+    ; In Rebol2 and R3-Alpha, "none" is a no-op. The input type doesn't matter.
+    ; In Red, "none" matches in blocks but not in strings.
+    ;
+    ; Ren-C matches blanks literally in array inputs, and acts like matching
+    ; a space in string and binary inputs.  That's closer to Red's behavior in
+    ; spirit, but here we emulate Rebol2.
+
+    blank! combinator [
+        return: []  ; isotope
+        value [blank!]
+    ][
+        remainder: input
+        return ~blank~
+    ]
+
     === OLD-STYLE INTEGER! COMBINATOR ===
 
     ; This uses a skippable quoted integer argument to get a maximum range.
