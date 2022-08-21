@@ -47,6 +47,8 @@ append redbol-combinators spread reduce [
     ][
         append state.loops binding of 'return
 
+        remainder: input  ; if no matches, it can still succeed
+
         cycle [
             [# remainder]: parser input except [
                 break  ; failed rule => stop successfully
@@ -82,7 +84,7 @@ append redbol-combinators spread reduce [
         ]
 
         if no-matches [
-            return fail "SOME did not run at least one match"
+            return raise "SOME did not run at least one match"
         ]
 
         take/last state.loops
@@ -127,7 +129,7 @@ append redbol-combinators spread reduce [
         parser [action!]
     ][
         [^ remainder]: parser input except e -> [
-            return fail e
+            return raise e
         ]
         set target copy/part input remainder
         return ~copy~
@@ -140,7 +142,7 @@ append redbol-combinators spread reduce [
         parser [action!]
     ][
         [^ remainder]: parser input except e -> [
-            return fail e
+            return raise e
         ]
         if same? remainder input [  ; no advancement gives NONE
             set target null
@@ -174,15 +176,15 @@ append redbol-combinators spread reduce [
             fail e  ; report error from GET (e.g. getting an unset value)
         ]
 
-        if not any-series? get value [
+        if not any-series? value [
             fail "SEEK (via GET-WORD!) in PARSE2 must return a series"
         ]
 
-        if not same? head input head get value [
+        if not same? head input head value [
             fail "SEEK (via GET-WORD!) in PARSE2 must be in the same series"
         ]
 
-        remainder: get value
+        remainder: value
         return ~seek~
     ]
 
@@ -220,15 +222,17 @@ append redbol-combinators spread reduce [
         ]
 
         repeat value [  ; do the required matches first
-            [# input]: parser input except e -> [
-                return fail e
+            [# remainder]: parser input except e -> [
+                return raise e
             ]
+            input: remainder  ; accept the input and try again
         ]
         if max [  ; for "bonus" iterations, failing is okay
             repeat (max - value) [
-                [# input]: parser input except [
+                [# remainder]: parser input except [
                     break  ; don't return failure if it's in the "overage range"
                 ]
+                input: remainder  ; accept the input and try again
             ]
         ]
 
@@ -265,7 +269,7 @@ append redbol-combinators spread reduce [
         <local> subseries
     ][
         if tail? input [
-            return fail  "INTO used at end of PARSE input"
+            return raise "INTO used at end of PARSE input"
         ]
         if not any-series? subseries: input.1 [
             fail "Need ANY-SERIES! datatype for use with INTO in UPARSE"
@@ -274,10 +278,10 @@ append redbol-combinators spread reduce [
         ; If the entirety of the item at the input array is matched by the
         ; supplied parser rule, then we advance past the item.
         ;
-        [# subseries]: subparser subseries except e -> [return fail e]
+        [# subseries]: subparser subseries except e -> [return raise e]
 
         if not tail? subseries [
-            return fail "INTO rule did not consume entirety of subseries"
+            return raise "INTO rule did not consume entirety of subseries"
         ]
 
         remainder: next input
@@ -310,7 +314,7 @@ append redbol-combinators spread reduce [
         {(REDBOL) Interrupt matching with failure}
         return: []  ; divergent
     ][
-        return fail "Explicit FAIL combinator usage in PARSE"
+        return raise "Explicit FAIL combinator usage in PARSE"
     ]
 ]
 
