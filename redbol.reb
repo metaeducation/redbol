@@ -931,7 +931,7 @@ foreach: emulate [
         use :vars [
             position: data
             return while [not tail? position] compose [
-                ((collect [
+                (spread collect [
                     for-each item vars [
                         case [
                             set-word? item [
@@ -946,8 +946,8 @@ foreach: emulate [
                             fail "non SET-WORD?/WORD? in FOREACH vars"
                         ]
                     ]
-                ]))
-                ((body))
+                ])
+                (as group! body)
             ]
         ]
     ]
@@ -995,8 +995,8 @@ onlify: helper [
         return adapt (
             augment :action [/only]
         ) compose/deep [
-            all [not only, any-array? series, any-array? unquote (param)] then [
-                (param): meta spread as block! unquote (param)
+            all [not only, any-array? series, any-array? (param)] then [
+                set/any '(param) spread (param)
             ]
             ; ...fall through to normal handling
         ]
@@ -1080,12 +1080,12 @@ oldsplicer: helper [
         adapt :action [
             all [
                 not only, any-array? series,
-                quoted? value, any-path? unquote value
+                quoted? value, any-path? value
             ] then [
-                value: meta spread as block! unquote value  ; splice it
+                set/any 'value spread as block! value  ; splice it
             ] else [
                 (match [map! object!] series) then [
-                    value: meta spread ensure block! unquote value
+                    set/any 'value spread ensure block! value
                 ]
             ]
 
@@ -1107,12 +1107,12 @@ oldsplicer: helper [
             ;
             all [
                 match [any-string! binary!] series
-                not block? unquote value
-                not issue? unquote value  ; want e.g. # adds as #{00} to BINARY!
-                not integer? unquote value
-                (type of series) != (type of unquote :value)  ; breaks /PART
+                not block? value
+                not issue? value  ; want e.g. # adds as #{00} to BINARY!
+                not integer? value
+                (type of series) != (type of :value)  ; breaks /PART
             ] then [
-                value: quote redbol.form/unspaced unquote :value
+                value: redbol.form/unspaced :value
             ]
         ]
     ]
