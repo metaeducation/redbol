@@ -107,9 +107,17 @@ any-block?: emulate [:any-array?]
 any-object!: emulate [any-context!]
 any-object?: emulate [:any-context?]
 
-none: emulate [_]  ; falsey-reified-nothingness, this role is taken by BLANK!
-none!: emulate [blank!]
-none?: emulate [:blank?]
+; Redbol wants something reified that does not reduce that is falsey.
+;
+; Ren-C has no such concept in reified space.  We use the-word! for now because
+; it's a datatype that didn't exist in historical Rebol, so it should not
+; conflate with issues/etc...and it is non-reducing.  Functions like IF and
+; CASE have to be hooked with new predicates for the revised definition of
+; truthiness and falseyness that includes @none
+;
+none: emulate [@none]
+none!: emulate [the-word!]
+none?: emulate [x -> [:x = @none]]
 
 type?: emulate [
     lambda [
@@ -117,9 +125,9 @@ type?: emulate [
         /word {Note: SWITCH evaluates https://trello.com/c/fjJb3eR2}
     ][
         case [
-            not word [type of :value]
+            not word [either @none = :value [none!] [type of :value]]
             unset? 'value ['unset!]  ; https://trello.com/c/rmsTJueg
-            blank? :value ['none!]  ; https://trello.com/c/vJTaG3w5
+            :value = @none ['none!]  ; https://trello.com/c/vJTaG3w5
             group? :value ['paren!]  ; https://trello.com/c/ANlT44nH
             (match ['word!] :value) ['lit-word!]
             (match ['path!] :value) ['lit-path!]
@@ -129,6 +137,9 @@ type?: emulate [
     ]
 ]
 
+true?: emulate [x -> [not any [not :x, :x = @none]]]
+false?: emulate [x -> [did any [not :x, :x = @none]]]
+export not: :false?
 
 === FUNCTIONS ===
 
@@ -200,9 +211,6 @@ why?: emulate [does [ren.why]]  ; not exported yet, :why not bound
 null: emulate [
     make char! 0  ; NUL in Ren-C https://en.wikipedia.org/wiki/Null_character
 ]
-
-true?: emulate [:did]  ; better name https://trello.com/c/Cz0qs5d7
-false?: emulate [:not]  ; better name https://trello.com/c/Cz0qs5d7
 
 comment: emulate [
     func [
@@ -493,7 +501,7 @@ compose: emulate [
         /into "https://forum.rebol.info/t/stopping-the-into-virus/705"
             [any-array! any-string! binary!]
     ][
-        if not block? :value [return :value]  ; `compose 1` is `1` in Rebol2
+        if not block? value [return value]  ; `compose 1` is `1` in Rebol2
 
         composed: apply :compose [
             ;
@@ -503,7 +511,7 @@ compose: emulate [
             ; arguments.  If you want a skippable argument in an APPLY you
             ; must specify it explicitly by name...APPLY always <skip>s.
 
-            :value
+            value
             /deep deep
 
             ; The predicate is a function that runs on whatever is generated
@@ -517,9 +525,10 @@ compose: emulate [
             ;    rebol2> compose [(either true [] [])]
             ;    == []
             ;
-            /predicate try if not only [
+            /predicate if not only [
                 lambda [group <local> product] [
-                    (non any-array! eval group) else array -> [spread array]
+                    product: eval group else [@none]
+                    (non any-array! :product) else array -> [spread array]
                 ]
             ]
         ]
@@ -877,23 +886,35 @@ xor: emulate [enfixed :difference]
 
 mod: emulate [:modulo]  ; MOD is enfix in Ren-C, MODULO still prefix
 
-; Ren-C NULL means no branch ran, Rebol2 this is communicated by #[none]
+; Ren-C NULL means no branch ran, Rebol2 this is communicated by #[none].  We
+; use the inert WORD! form @none for this.
 ;
 denuller: helper [
-    lambda [action [action!]] [
+    action -> [
         chain [
             :action
 
-            lambda [^x] [  ; needs to be META to handle ~none~ isotopes/etc.
-                x then [unmeta x] else [_]
+            lambda [^x [<opt> <void> any-value!]] [
+                (unmeta x) else [@none]
             ]
         ]
     ]
 ]
 
-if: emulate [denuller :if]
-unless: emulate [denuller adapt :if [condition: not :condition]]
-case: emulate [denuller :case]
+=== CONDITIONALS ===
+
+; Concept of "truthy" and "falsey" are different in Ren-C, where NULL is falsey
+; and all ANY-VALUE! are true.  We want to make exceptions for reified ideas
+; of LOGIC! and NONE! for Redbol.  Currently the only way to do that is to
+; leverage the predicates of the conditionals.
+
+if: emulate [denuller adapt :if [condition: true? :condition]]
+either: emulate [denuller adapt :either [condition: true? :condition]]
+unless: emulate [denuller adapt :if [condition: false? :condition]]
+case: emulate [denuller specialize :case [predicate: :true?]]
+any: emulate [denuller specialize :all [predicate: :true?]]
+all: emulate [denuller adapt :any [predicate: :true?]]
+
 
 switch: emulate [  ; Ren-C evaluates cases: https://trello.com/c/9ChhSWC4/
     enclose (augment :switch [
@@ -901,10 +922,10 @@ switch: emulate [  ; Ren-C evaluates cases: https://trello.com/c/9ChhSWC4/
             [block!]
     ]) lambda [f [frame!]] [
         f.cases: map-each c f.cases [
-            either block? :c [c] [quote c]  ; suppress eval on non-blocks
+            match block! c else [quote c]  ; suppress eval on non-blocks
         ]
         let def: f.default  ; the DO expires frame right now (for safety)
-        (do f else (def)) else '_  ; BLANK! on failed SWITCH, not null
+        (do f else (def)) else [@none]
     ]
 ]
 
@@ -923,7 +944,7 @@ foreach: emulate [
             not block? vars
             for-each-nonconst item vars [if set-word? item [break] true]
         ] then [
-            return (for-each-nonconst :vars data body else [_])
+            return (for-each-nonconst :vars data body else [@none])
         ]
 
         ; Weird FOREACH, transform to WHILE: https://trello.com/c/AXkiWE5Z
@@ -973,9 +994,6 @@ repeat: emulate [denuller :count-up]
 forall: emulate [denuller :iterate]
 forskip: emulate [denuller :iterate-skip]
 
-any: emulate [denuller :any]
-all: emulate [denuller :all]
-
 
 ; !!! This used to be in %mezz-legacy.r where it was being tested.  Now the
 ; core functions do not have /ONLY at all and the refinement only exists in
@@ -1023,9 +1041,9 @@ find: emulate [
         all [
             any-series? f.pattern
             empty? f.pattern  ; see [2]
-        ] then [return _]
+        ] then [return @none]
 
-        return (do f else '_)  ; NULL -> BLANK!
+        return (do f else [@none])
     ]
 ]
 select: emulate [denuller :select]
