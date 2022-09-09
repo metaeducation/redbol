@@ -8,7 +8,7 @@ Rebol [
 
     Exports: [
         redbol-combinators
-        uparse2* uparse2
+        uparse2
     ]
 
     Description: {
@@ -50,7 +50,7 @@ append redbol-combinators spread reduce [
         remainder: input  ; if no matches, it can still succeed
 
         cycle [
-            [# remainder]: parser input except [
+            [^ remainder]: parser input except [
                 break  ; failed rule => stop successfully
             ]
             if same? remainder input [
@@ -73,7 +73,7 @@ append redbol-combinators spread reduce [
         no-matches: true
 
         cycle [
-            [# remainder]: parser input except [
+            [^ remainder]: parser input except [
                 break  ; failed rule => stop successfully
             ]
             if same? remainder input [
@@ -99,7 +99,7 @@ append redbol-combinators spread reduce [
         append state.loops binding of 'return
 
         cycle [
-            [# input]: parser input except [
+            [^ input]: parser input except [
                 break
             ]
         ]
@@ -222,14 +222,14 @@ append redbol-combinators spread reduce [
         ]
 
         repeat value [  ; do the required matches first
-            [# remainder]: parser input except e -> [
+            [^ remainder]: parser input except e -> [
                 return raise e
             ]
             input: remainder  ; accept the input and try again
         ]
         if max [  ; for "bonus" iterations, failing is okay
             repeat (max - value) [
-                [# remainder]: parser input except [
+                [^ remainder]: parser input except [
                     break  ; don't return failure if it's in the "overage range"
                 ]
                 input: remainder  ; accept the input and try again
@@ -278,7 +278,7 @@ append redbol-combinators spread reduce [
         ; If the entirety of the item at the input array is matched by the
         ; supplied parser rule, then we advance past the item.
         ;
-        [# subseries]: subparser subseries except e -> [return raise e]
+        [@ subseries]: subparser subseries except e -> [return raise e]
 
         if not tail? subseries [
             return raise "INTO rule did not consume entirety of subseries"
@@ -344,9 +344,6 @@ redbol-combinators.('reject): :default-combinators.('break)
 redbol-combinators.('collect): null
 redbol-combinators.('keep): null
 
-uparse2*: specialize :parse* [
-    combinators: redbol-combinators
-]
-uparse2: specialize :parse*/fully [
+uparse2: specialize :parse [
     combinators: redbol-combinators
 ]
