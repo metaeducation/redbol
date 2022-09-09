@@ -69,7 +69,7 @@ rewrite-spec-and-body: func [
     ]
 
     while [not tail? spec] [
-        refinement: try to word! match path! spec.1
+        refinement: to word! maybe match path! spec.1
 
         ; Refinements with multiple arguments are no longer allowed, and
         ; there weren't many of those so it's not a big deal.  But there
@@ -269,9 +269,9 @@ apply2: func [
     while [not tail? block] [
         block: if only [
             arg: block.1
-            try next block
+            next block
         ] else [
-            try [arg @block]: evaluate block  ; no /VOID, skips invisibles
+            [arg @block]: evaluate block
         ]
 
         if refinement? params.1 [
@@ -292,7 +292,7 @@ apply2: func [
             ]
         ]
 
-        params: try next params
+        params: next maybe params
     ]
 
     comment [
