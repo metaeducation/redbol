@@ -233,9 +233,9 @@ found?: emulate [
 
 === SETTING AND GETTING ===
 
-unset!: emulate [bad-word!]  ; there's no ISOTOPE! type, but maybe should be
-unset?: emulate [:none?]  ; checks *value* is unset, not var
-unset: emulate [lambda [var] [set var ~]]
+unset!: emulate [quasi!]  ; there's no ISOTOPE! type, but maybe should be
+unset?: emulate [:unset?]  ; checks *value* is unset, not var
+unset: emulate [:unset]
 
 ; Note: R3-Alpha had a /PAD option, which was the inverse of /SOME.
 ; If someone needs it, they can adapt this routine as needed.
