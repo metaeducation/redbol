@@ -608,7 +608,7 @@ rejoin: emulate [
     ][
         cycle [  ; Keep evaluating until a usable BASE is found
 
-            if not [base @block]: evaluate block [
+            if not (base: evaluate/next block 'block, block) [
                 return copy []  ; exhausted block without finding a base value
             ]
 
