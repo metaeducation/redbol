@@ -880,7 +880,7 @@ denuller: helper [
         chain [
             :action
 
-            lambda [^x [<opt> <void> any-value!]] [
+            lambda [^x [<opt> <void> <pack> any-value!]] [
                 (unmeta x) else [@none]
             ]
         ]
