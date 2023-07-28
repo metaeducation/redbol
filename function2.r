@@ -186,7 +186,7 @@ function-nonconst: (
 )
 
 func2: func [
-    return: [action!]
+    return: [activation!]
     spec [block!]
     body [block!]
 ][
@@ -200,7 +200,7 @@ func2: func [
 ]
 
 function2: func [
-    return: [action!]
+    return: [activation!]
     spec [block!]
     body [block!]
     /with [object! block! map!]  ; from R3-Alpha, not adopted by Red
@@ -257,7 +257,7 @@ has2: lambda [
 
 apply2: func [
     return: [<opt> any-value!]
-    action [action!]
+    action [<unrun> action!]
     block [block!]
     /only
     <local> arg frame params using-args

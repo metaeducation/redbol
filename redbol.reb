@@ -395,7 +395,7 @@ try: emulate [
         {See TRAP for Ren-C equivalent: https://trello.com/c/IbnfBaLI}
         block [block!]
         /except "Note TRAP doesn't take a handler...use THEN instead"
-            [block! action!]
+            [<unrun> block! action!]
         <local>
             error result
     ][
@@ -560,7 +560,7 @@ collect: emulate [
             series: <remove-unused-series-parameter>
         ]
 
-        reeval func* compose [(name) [action!] <with> return] body :keeper
+        reeval func* compose [(name) [activation!] <with> return] body :keeper
         either into [out] [head of out]
     ]
 ]
@@ -897,6 +897,7 @@ denuller: helper [
 if: emulate [denuller adapt :if [condition: true? :condition]]
 either: emulate [denuller adapt :either [condition: true? :condition]]
 unless: emulate [denuller adapt :if [condition: false? :condition]]
+
 case: emulate [denuller specialize :case [predicate: :true?]]
 any: emulate [denuller specialize :all [predicate: :true?]]
 all: emulate [denuller adapt :any [predicate: :true?]]
@@ -991,8 +992,8 @@ forskip: emulate [denuller :iterate-skip]
 onlify: helper [
     func [
         {Add /ONLY behavior to APPEND, INSERT, CHANGE, FIND, SELECT...}
-        return: [action!]
-        action [action!]
+        return: [activation!]
+        action [<unrun> action!]
         /param [word!]
     ][
         param: default ['value]
@@ -1080,7 +1081,7 @@ not-equal?: emulate [noquoter :not-equal?]
 ; https://forum.rebol.info/t/justifiable-asymmetry-to-on-block/751
 ;
 oldsplicer: helper [
-    lambda [action [action!]] [
+    lambda [action [<unrun> action!]] [
         adapt :action [
             all [
                 not only, any-array? series,
