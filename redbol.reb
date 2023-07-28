@@ -718,7 +718,7 @@ quit: emulate [
         /return "Ren-C is variadic, 0 or 1 arg: https://trello.com/c/3hCNux3z"
             [<opt> any-value!]
     ][
-        apply :quit [/value :return]
+        apply :quit [/with :return]
     ]
 ]
 
