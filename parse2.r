@@ -320,9 +320,9 @@ append redbol-combinators spread reduce [
 
 ; Kill off any new combinators.
 
-redbol-combinators.('between): null
-redbol-combinators.('gather): null
-redbol-combinators.('emit): null
+redbol-combinators.('between): void
+redbol-combinators.('gather): void
+redbol-combinators.('emit): void
 
 ; Ren-C rethought BREAK to mean soft failure, e.g. the looping construct of
 ; SOME or REPEAT will be NULL.  The precise meaning and behavior of historical
@@ -341,8 +341,8 @@ redbol-combinators.('reject): :default-combinators.('break)
 ; overall parse result changes to the collect result vs. setting a variable.
 ; That could be emulated.
 ;
-redbol-combinators.('collect): null
-redbol-combinators.('keep): null
+redbol-combinators.('collect): void
+redbol-combinators.('keep): void
 
 uparse2: specialize :parse [
     combinators: redbol-combinators
