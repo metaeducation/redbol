@@ -42,7 +42,7 @@ append redbol-combinators spread reduce [
 
     'any combinator [
         {(REDBOL) Any number of matches (including 0), stop if no progress}
-        return: []  ; isotope
+        return: [~any~]
         parser [action!]
     ][
         append state.loops binding of 'return
@@ -65,7 +65,7 @@ append redbol-combinators spread reduce [
 
     'some combinator [
         {(REDBOL) Must run at least one match, stop if no progress}
-        return: []  ; isotope
+        return: [~some~]
         parser [action!]
         <local> no-matches
     ][
@@ -93,7 +93,7 @@ append redbol-combinators spread reduce [
 
     'while combinator [
         {(REDBOL) Any number of matches (including 0), no progress requirement}
-        return: []  ; isotope
+        return: [~while~]
         parser [action!]
     ][
         append state.loops binding of 'return
@@ -124,7 +124,7 @@ append redbol-combinators spread reduce [
 
     'copy combinator [
         {(REDBOL) Copy input series elements into a SET-WORD! or WORD!}
-        return: []  ; isotope
+        return: [~copy~]
         'target [word! set-word!]
         parser [action!]
     ][
@@ -137,7 +137,7 @@ append redbol-combinators spread reduce [
 
     'set combinator [
         {(REDBOL) Take single input element into a SET-WORD! or WORD!}
-        return: []  ; isotope
+        return: [~set~]
         'target [word! set-word!]
         parser [action!]
     ][
@@ -160,7 +160,7 @@ append redbol-combinators spread reduce [
     ; into the variable or restoring it.
 
     set-word! combinator [
-        return: []  ; isotope
+        return: [~mark~]
         value [set-word!]
     ][
         set value input
@@ -169,7 +169,7 @@ append redbol-combinators spread reduce [
     ]
 
     get-word! combinator [
-        return: []  ; isotope
+        return: [~seek~]
         value [get-word!]
     ][
         value: get value except e -> [
@@ -198,7 +198,7 @@ append redbol-combinators spread reduce [
     ; spirit, but here we emulate Rebol2.
 
     blank! combinator [
-        return: []  ; isotope
+        return: [~blank~]
         value [blank!]
     ][
         remainder: input
@@ -212,7 +212,7 @@ append redbol-combinators spread reduce [
     ; UPARSE, so this is being only done in the compatibility mode for now.
 
     integer! combinator [
-        return: []  ; isotope
+        return: [~integer!~]
         value [integer!]
         'max [<skip> integer!]
         parser [action!]
@@ -264,7 +264,7 @@ append redbol-combinators spread reduce [
 
     'into combinator [
         {(REDBOL) Arity-1 Form of Recursion with a rule}
-        return: []  ; isotope
+        return: [~into~]
         subparser [action!]
         <local> subseries
     ][
