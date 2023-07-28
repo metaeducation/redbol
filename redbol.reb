@@ -209,7 +209,7 @@ to-rebol-file: emulate [
 why?: emulate [does [ren.why]]  ; not exported yet, :why not bound
 
 null: emulate [
-    make char! 0  ; NUL in Ren-C https://en.wikipedia.org/wiki/Null_character
+    make issue! 0  ; NUL in Ren-C https://en.wikipedia.org/wiki/Null_character
 ]
 
 comment: emulate [
