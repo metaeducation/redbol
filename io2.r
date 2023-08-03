@@ -34,16 +34,16 @@ split-path-2: func [  ; Ren-C version uses multi-return
 ][
     text: as text! target
     pos: _
-    parse3 text [
-        ["/" | "." opt "." opt "/"] end (dir: dirize text) |
-        pos: <here>, opt some [thru "/" [end | pos: <here>]] (
+    parse text [
+        ["/" | "." try "." try "/"] <end> (dir: dirize text) |
+        pos: <here>, try some [thru "/" [<end> | pos: <here>]] (
             all [
                 empty? dir: copy/part text (at head of text index of pos),
                 dir: %./
             ]
             all [find [%. %..] pos: to file! pos insert tail of pos "/"]
         )
-        end
+        <end>
     ]
     return reduce [(as type of target dir) pos]
 ]

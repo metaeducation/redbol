@@ -318,6 +318,16 @@ append redbol-combinators spread reduce [
     ]
 ]
 
+; Rename ACCEPT to RETURN (UPARSE renamed it)
+
+redbol-combinators.('return): default-combinators.('accept)
+redbol-combinators.('accept): void
+
+; Rename TRY to OPT
+
+redbol-combinators.('opt): default-combinators.('try)
+redbol-combinators.('try): void
+
 ; Kill off any new combinators.
 
 redbol-combinators.('between): void
@@ -334,8 +344,8 @@ redbol-combinators.('emit): void
 ;     red>> parse "aaa" [some ["a" reject] | "aaa"]
 ;     == true
 ;
-redbol-combinators.('break): :default-combinators.('stop)
-redbol-combinators.('reject): :default-combinators.('break)
+redbol-combinators.('break): default-combinators.('stop)
+redbol-combinators.('reject): default-combinators.('break)
 
 ; Red has COLLECT and KEEP, with different semantics--no rollback, and the
 ; overall parse result changes to the collect result vs. setting a variable.
