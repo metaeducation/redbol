@@ -37,7 +37,7 @@ export: lib.func [
 ]
 
 checked: enfixed lib.func [
-    return: <none>
+    return: [~]
     :set-word [set-word!]
     code [block!]
 ] lib.in lib [

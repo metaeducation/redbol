@@ -16,7 +16,7 @@ Rebol [
 ]
 
 print2: func [
-    return: <none>
+    return: [~]
     value [any-value!]  ; Ren-C only takes TEXT!, BLOCK!, BLANK!, CHAR?
 ][
     write-stdout case [

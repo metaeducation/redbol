@@ -214,7 +214,7 @@ null: emulate [
 
 comment: emulate [
     func [
-        return: <none> {Not invisible: https://trello.com/c/dWQnsspG}
+        return: [~] {Not invisible: https://trello.com/c/dWQnsspG}
         :discarded [block! any-string! binary! any-scalar!]
     ][
     ]
