@@ -43,7 +43,7 @@ append redbol-combinators spread reduce [
     'any combinator [
         {(REDBOL) Any number of matches (including 0), stop if no progress}
         return: [~any~]
-        parser [activation?]
+        parser [action?]
     ][
         append state.loops binding of 'return
 
@@ -66,7 +66,7 @@ append redbol-combinators spread reduce [
     'some combinator [
         {(REDBOL) Must run at least one match, stop if no progress}
         return: [~some~]
-        parser [activation?]
+        parser [action?]
         <local> no-matches
     ][
         append state.loops binding of 'return
@@ -94,7 +94,7 @@ append redbol-combinators spread reduce [
     'while combinator [
         {(REDBOL) Any number of matches (including 0), no progress requirement}
         return: [~while~]
-        parser [activation?]
+        parser [action?]
     ][
         append state.loops binding of 'return
 
@@ -126,7 +126,7 @@ append redbol-combinators spread reduce [
         {(REDBOL) Copy input series elements into a SET-WORD! or WORD!}
         return: [~copy~]
         'target [word! set-word!]
-        parser [activation?]
+        parser [action?]
     ][
         [^ remainder]: parser input except e -> [
             return raise e
@@ -139,7 +139,7 @@ append redbol-combinators spread reduce [
         {(REDBOL) Take single input element into a SET-WORD! or WORD!}
         return: [~set~]
         'target [word! set-word!]
-        parser [activation?]
+        parser [action?]
     ][
         [^ remainder]: parser input except e -> [
             return raise e
@@ -215,7 +215,7 @@ append redbol-combinators spread reduce [
         return: [~integer!~]
         value [integer!]
         'max [<skip> integer!]
-        parser [activation?]
+        parser [action?]
     ][
         all [max, max < value] then [
             fail "Can't make MAX less than MIN in range for INTEGER! combinator"
@@ -265,7 +265,7 @@ append redbol-combinators spread reduce [
     'into combinator [
         {(REDBOL) Arity-1 Form of Recursion with a rule}
         return: [~into~]
-        subparser [activation?]
+        subparser [action?]
         <local> subseries
     ][
         if tail? input [

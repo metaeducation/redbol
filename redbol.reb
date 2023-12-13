@@ -145,17 +145,17 @@ export not: :false?
 
 import <function2.r>
 
-any-function!: emulate [activation?!]
-any-function?: emulate [:activation?]
+any-function!: emulate [action?!]
+any-function?: emulate [:action?]
 
-function!: emulate [activation?!]
-function?: emulate [:activation?]
+function!: emulate [action?!]
+function?: emulate [:action?]
 
-native!: emulate [activation?!]
-native?: emulate [:activation?]
+native!: emulate [action?!]
+native?: emulate [:action?]
 
-closure!: emulate [:activation?!]
-closure?: emulate [:activation?]
+closure!: emulate [:action?!]
+closure?: emulate [:action?]
 
 ; If a Ren-C function suspects it is running code that may happen more than
 ; once (e.g. a loop or function body) it marks that parameter `<const>`.
@@ -331,7 +331,7 @@ do: emulate [
     function [
         return: [<opt> any-value!]
         source [<opt> blank! block! group! text! binary! url! file! tag!
-            error! activation?
+            error! action?
         ]
         normals [any-value! <variadic>]
         'softs [any-value! <variadic>]
@@ -349,7 +349,7 @@ do: emulate [
             return :result  ; DO/NEXT returned the *evaluative result*
         ]
 
-        if activation? :source [
+        if action? :source [
             code: reduce [:source]
             params: parameters of :source
             iterate params [
@@ -560,7 +560,7 @@ collect: emulate [
             series: <remove-unused-series-parameter>
         ]
 
-        reeval func* compose [(name) [activation?] <with> return] body :keeper
+        reeval func* compose [(name) [action?] <with> return] body :keeper
         either into [out] [head of out]
     ]
 ]
@@ -992,7 +992,7 @@ forskip: emulate [denuller :iterate-skip]
 onlify: helper [
     func [
         {Add /ONLY behavior to APPEND, INSERT, CHANGE, FIND, SELECT...}
-        return: [activation?]
+        return: [action?]
         action [<unrun> frame!]
         /param [word!]
     ][

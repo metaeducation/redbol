@@ -186,7 +186,7 @@ function-nonconst: (
 )
 
 func2: func [
-    return: [activation?]
+    return: [action?]
     spec [block!]
     body [block!]
 ][
@@ -200,7 +200,7 @@ func2: func [
 ]
 
 function2: func [
-    return: [activation?]
+    return: [action?]
     spec [block!]
     body [block!]
     /with [object! block! map!]  ; from R3-Alpha, not adopted by Red

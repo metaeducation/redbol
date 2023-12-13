@@ -43,7 +43,7 @@
 ([1] == head apply :insert [copy [] [1] none none])
 ([1] == head apply :insert [copy [] [1] none none none false])
 ([[1]] == head apply :insert [copy [] [1] none none none true])
-(activation? apply :type? [:print])
+(action? apply :type? [:print])
 (get-word! == apply/only :type? [:print])
 
 [
