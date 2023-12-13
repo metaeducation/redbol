@@ -24,7 +24,7 @@ cloaker: function [  ; specialized as CLOAK and DECLOAK
     {Simple and insecure data scrambler, was native C code in Rebol2/R3-Alpha}
 
     return: [binary!] "Same series as data"
-    decode [logic!] "true if decode, false if encode"
+    decode [logic?] "true if decode, false if encode"
     data [binary!] "Binary series to descramble (modified)"
     key [text! binary! integer!] "Encryption key or pass phrase"
     /with "Use a text! key as-is (do not generate hash)"

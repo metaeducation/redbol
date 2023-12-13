@@ -17,7 +17,7 @@ Rebol [
 
 print2: func [
     return: <none>
-    value [any-value!]  ; Ren-C only takes TEXT!, BLOCK!, BLANK!, CHAR!
+    value [any-value!]  ; Ren-C only takes TEXT!, BLOCK!, BLANK!, CHAR?
 ][
     write-stdout case [
         block? :value [spaced value]
@@ -53,7 +53,7 @@ write2: adapt (augment :write [
     /direct "Opens the port without buffering."
     /no-wait "Returns immediately without waiting if no data."
     /with "Specifies alternate line termination."
-        [char! text!]
+        [char? text!]
     /allow "Specifies the protection attributes when created."
         [block!]  ; this is still on WRITE, but not implemented (?)
     /mode "Block of above refinements."
@@ -83,7 +83,7 @@ read2: enclose (augment :read [
     /direct "Opens the port without buffering."
     /no-wait "Returns immediately without waiting if no data."
     /with "Specifies alternate line termination."
-        [char! text!]
+        [char? text!]
     /mode "Block of above refinements."
         [block!]
     /custom "Allows special refinements."

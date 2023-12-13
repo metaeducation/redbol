@@ -62,7 +62,7 @@ any-function!: function!: any-function?: function?: deprecated [
     https://forum.rebol.info/t/596
 
     {ANY-FUNCTION! (and FUNCTION!) no longer exist, due to standardizing}
-    {on one type of "invokable", which is ACTION!}
+    {on one type of "invokable", which is FRAME! (isotopically ACTION?)}
 ]
 
 string!: string?: to-string: deprecated [
@@ -181,7 +181,7 @@ switch: checked [
                 fail @cases [
                     {Temporarily disabled word/path SWITCH clause:} :c LF
 
-                    {You may have meant to use a LIT-WORD! / LIT-PATH!} LF
+                    {You may have meant to use a LIT-WORD? / LIT-PATH?} LF
 
                     {SWITCH in Ren-C evaluates its match clauses.  But to}
                     {help catch old uses, only datatype lookups enabled.}
@@ -202,7 +202,7 @@ apply: checked [
 
 bind?: deprecated [
     {BIND? has been replaced by `BINDING OF` (gives the context or NULL}
-    {if no binding) and BOUND?--which now returns just LOGIC! and is}
+    {if no binding) and BOUND?--which now returns just logic and is}
     {equivalent to checking if the BINDING OF is <> NULL}
 ]
 

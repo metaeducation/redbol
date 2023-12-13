@@ -97,7 +97,7 @@ rewrite-spec-and-body: func [
 
         spool-descriptions-and-locals
 
-        if not let argument: match [word! lit-word! get-word!] first spec [
+        if not let argument: match [word! lit-word? get-word!] first spec [
             insert body compose/deep [
                 (refinement): either (refinement) [true] [blank]
             ]
@@ -186,7 +186,7 @@ function-nonconst: (
 )
 
 func2: func [
-    return: [activation!]
+    return: [activation?]
     spec [block!]
     body [block!]
 ][
@@ -200,7 +200,7 @@ func2: func [
 ]
 
 function2: func [
-    return: [activation!]
+    return: [activation?]
     spec [block!]
     body [block!]
     /with [object! block! map!]  ; from R3-Alpha, not adopted by Red
@@ -257,7 +257,7 @@ has2: lambda [
 
 apply2: func [
     return: [<opt> any-value!]
-    action [<unrun> action!]
+    action [<unrun> frame!]
     block [block!]
     /only
     <local> arg frame params using-args
@@ -276,7 +276,7 @@ apply2: func [
 
         if refinement? params.1 [
             ;
-            ; Ren-C allows LOGIC! to control parameterless refinements and
+            ; Ren-C allows logic to control parameterless refinements and
             ; canonizes to either null or #.  Rebol2 allowed any truthy
             ; thing, it does not allow BLANK!.  This makes a BLOCK!-style
             ; apply using positions non-viable.  We OPT all "nones" here.

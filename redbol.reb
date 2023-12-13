@@ -58,7 +58,7 @@ helper: ren.lambda [
     do in ren code
 ]
 
-emulate: enfixed ren.lambda [
+emulate: enfix ren.lambda [
     {EXPORTED definition that relying on words in REN (e.g. baseline APPEND)}
     :set-word [set-word!]
     code [block!]
@@ -74,7 +74,7 @@ string!: emulate [text!]
 string?: emulate [:text?]
 to-string: emulate [specialize :to [type: text!]]
 
-; There is no CHAR! "datatype" in Ren-C (ISSUE! and CHAR! are unified)
+; There is no CHAR! "datatype" in Ren-C (ISSUE! and char are unified)
 ; The belief is that TO a char-like thing of 1 should be #"1"
 ; Currently AS is serving as the numeric converter.
 ;
@@ -129,8 +129,8 @@ type?: emulate [
             unset? 'value ['unset!]  ; https://trello.com/c/rmsTJueg
             :value = @none ['none!]  ; https://trello.com/c/vJTaG3w5
             group? :value ['paren!]  ; https://trello.com/c/ANlT44nH
-            (match ['word!] :value) ['lit-word!]
-            (match ['path!] :value) ['lit-path!]
+            (match [lit-word?] :value) ['lit-word!]
+            (match [lit-path?] :value) ['lit-path!]
         ] else [
             to-word type of :value
         ]
@@ -145,17 +145,17 @@ export not: :false?
 
 import <function2.r>
 
-any-function!: emulate [action!]
-any-function?: emulate [:action?]
+any-function!: emulate [activation?!]
+any-function?: emulate [:activation?]
 
-function!: emulate [action!]
-function?: emulate [:action?]
+function!: emulate [activation?!]
+function?: emulate [:activation?]
 
-native!: emulate [action!]
-native?: emulate [:action?]
+native!: emulate [activation?!]
+native?: emulate [:activation?]
 
-closure!: emulate [:action!]
-closure?: emulate [:action?]
+closure!: emulate [:activation?!]
+closure?: emulate [:activation?]
 
 ; If a Ren-C function suspects it is running code that may happen more than
 ; once (e.g. a loop or function body) it marks that parameter `<const>`.
@@ -223,7 +223,7 @@ comment: emulate [
 found?: emulate [
     func [
         {See DID and NOT: https://trello.com/c/Cz0qs5d7}
-        return: [logic!]
+        return: [logic?]
         value
     ][
         return not blank? :value
@@ -308,7 +308,7 @@ get: emulate [
 value?: emulate [
     func [
         {See SET? in Ren-C: https://trello.com/c/BlktEl2M}
-        return: [logic!]
+        return: [logic?]
         value
     ][
         return either any-word? :value [set? value] [true]  ; bizarre.  :-/
@@ -331,7 +331,7 @@ do: emulate [
     function [
         return: [<opt> any-value!]
         source [<opt> blank! block! group! text! binary! url! file! tag!
-            error! action!
+            error! activation?
         ]
         normals [any-value! <variadic>]
         'softs [any-value! <variadic>]
@@ -349,13 +349,13 @@ do: emulate [
             return :result  ; DO/NEXT returned the *evaluative result*
         ]
 
-        if action? :source [
+        if activation? :source [
             code: reduce [:source]
             params: parameters of :source
             iterate params [
-                append code switch type of params.1 [
+                append code switch/type params.1 [
                     word! [take normals]
-                    lit-word! [take softs]
+                    lit-word?! [take softs]
                     get-word! [take hards]
                     set-word! [[]]  ; empty block appends nothing
                     refinement! [break]
@@ -395,15 +395,15 @@ try: emulate [
         {See TRAP for Ren-C equivalent: https://trello.com/c/IbnfBaLI}
         block [block!]
         /except "Note TRAP doesn't take a handler...use THEN instead"
-            [<unrun> block! action!]
+            [<unrun> block! frame!]
         <local>
             error result
     ][
         if ([error result]: trap [do block else '_]) [
             case [
-                not :except [error]
-                block? :except [do except else '_]
-                action? :except [except error else '_]
+                not except [error]
+                block? except [do except else '_]
+                frame? except [apply except [error] else '_]
             ]
         ] else [
             result else '_  ; Note: may be an ERROR! that was evaluated to
@@ -413,8 +413,8 @@ try: emulate [
 
 default: emulate [
     lambda [
-        {See the new enfixed DEFAULT: https://trello.com/c/cTCwc5vX}
-        'word [word! set-word! lit-word!]
+        {See the new enfix DEFAULT: https://trello.com/c/cTCwc5vX}
+        'word [word! set-word! lit-word?]
         value
     ][
         any [
@@ -454,7 +454,7 @@ import <parse2.r>
 parse: emulate [
     func [
         {Non-block rules replaced by SPLIT: https://trello.com/c/EiA56IMR}
-        return: [logic! block!]
+        return: [logic? block!]
         input [any-series!]
         rules [block! text! blank!]
         /case
@@ -560,7 +560,7 @@ collect: emulate [
             series: <remove-unused-series-parameter>
         ]
 
-        reeval func* compose [(name) [activation!] <with> return] body :keeper
+        reeval func* compose [(name) [activation?] <with> return] body :keeper
         either into [out] [head of out]
     ]
 ]
@@ -866,9 +866,9 @@ decompress: emulate [
     ]
 ]
 
-and: emulate [enfixed :intersect]
-or: emulate [enfixed :union]
-xor: emulate [enfixed :difference]
+and: emulate [enfix :intersect]
+or: emulate [enfix :union]
+xor: emulate [enfix :difference]
 
 mod: emulate [:modulo]  ; MOD is enfix in Ren-C, MODULO still prefix
 
@@ -891,7 +891,7 @@ denuller: helper [
 
 ; Concept of "truthy" and "falsey" are different in Ren-C, where NULL is falsey
 ; and all ANY-VALUE! are true.  We want to make exceptions for reified ideas
-; of LOGIC! and NONE! for Redbol.  Currently the only way to do that is to
+; of LOGIC? and NONE? for Redbol.  Currently the only way to do that is to
 ; leverage the predicates of the conditionals.
 
 if: emulate [denuller adapt :if [condition: true? :condition]]
@@ -992,13 +992,13 @@ forskip: emulate [denuller :iterate-skip]
 onlify: helper [
     func [
         {Add /ONLY behavior to APPEND, INSERT, CHANGE, FIND, SELECT...}
-        return: [activation!]
-        action [<unrun> action!]
+        return: [activation?]
+        action [<unrun> frame!]
         /param [word!]
     ][
         param: default ['value]
         return adapt (
-            augment :action [/only]
+            augment action [/only]
         ) compose/deep [
             all [not only, any-array? series, any-array? (param)] then [
                 set/any '(param) spread (param)
@@ -1073,16 +1073,16 @@ noquoter: helper [
 
 equal?: emulate [noquoter :equal?]
 not-equal?: emulate [noquoter :not-equal?]
-=: emulate [enfixed noquoter :=]
-<>: emulate [enfixed noquoter :<>]
-!=: emulate [enfixed noquoter :!=]
+=: emulate [enfix noquoter :=]
+<>: emulate [enfix noquoter :<>]
+!=: emulate [enfix noquoter :!=]
 
 
 ; https://forum.rebol.info/t/justifiable-asymmetry-to-on-block/751
 ;
 oldsplicer: helper [
-    lambda [action [<unrun> action!]] [
-        adapt :action [
+    lambda [action [<unrun> frame!]] [
+        adapt action [
             all [
                 not only, any-array? series,
                 quoted? value, any-path? value
@@ -1097,7 +1097,7 @@ oldsplicer: helper [
             ; Red and R3-Alpha would allow you to append an INTEGER! to a
             ; BINARY! and treat it as a byte.  But Rebol2 would add it as the
             ; character of the digit.  We go ahead and add as a byte because
-            ; there's no good way to add a byte otherwise.  (CHAR! encodings no
+            ; there's no good way to add a byte otherwise.  (char encodings no
             ; longer guarantee going to a single byte.)
             ;
             ; But if the integer is in a block, we fall back to Rebol2 behavior
