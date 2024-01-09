@@ -195,14 +195,18 @@ for-each-nonconst: emulate [
 ?: emulate [:help]
 
 to-local-file: emulate [
-    trap [get 'file-to-local] then [
+    if undefined? 'file-to-local [
         does [fail "TO-LOCAL-FILE not available in web build"]
+    ] else [
+        get 'file-to-local
     ]
 ]
 
 to-rebol-file: emulate [
-    trap [get 'local-to-file] then [
+    if undefined? 'local-to-file [
         does [fail "LOCAL-TO-FILE not available in web build"]
+    ] else [
+        get 'local-to-file
     ]
 ]
 
@@ -1183,7 +1187,11 @@ hijack :ren.transcode enclose copy :ren.transcode helper [
 
 
 call: emulate [  ; brings back the /WAIT switch (Ren-C waits by default)
-    trap [get 'call*]  ; TRAP because not available in web build
+    if undefined? 'call* [
+        does [fail "CALL not available in web build"]
+    ] else [
+        get 'call*
+    ]
 ]
 
 
