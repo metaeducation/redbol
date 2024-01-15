@@ -9,10 +9,7 @@
 (1 = (apply :- [2 1]))
 
 ; !!! These were permitted by Rebol2 APPLY, as missing arguments were
-; treated as #[none].  Ren-C's ~none~ concept is an isotope and cannot be
-; taken by ordinary function arguments, so this would have to be passing
-; BLANK! or NULL instead.  It's not clear why support for too few args
-; would be desirable.
+; treated as #[none].  Not clear why support for too few args is desirable.
 ;
 ;    (null = apply func [a] [a] [])
 ;    (null = apply/only func [a] [a] [])

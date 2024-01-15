@@ -34,9 +34,8 @@ REBOL [
 ]
 
 
-export ren: lib  ; save the Ren-C library (in this module, lib becomes "redbol"
-export lib: null  ; can't directly set lib to isotope with export yet (bug)
-lib: ~use-ren-or-redbol-instead-of-lib~
+export ren: lib  ; save the Ren-C library
+export lib: does [print "Use REN or REDBOL in Redbol implementation, not LIB"]
 redbol: attach of 'redbol  ; not exported--local for disambiguating this file
 
 
@@ -237,7 +236,7 @@ found?: emulate [
 
 === SETTING AND GETTING ===
 
-unset!: emulate [quasi!]  ; there's no ISOTOPE! type, but maybe should be
+unset!: emulate [antiform!]
 unset?: emulate [:unset?]  ; checks *value* is unset, not var
 unset: emulate [:unset]
 
@@ -521,7 +520,7 @@ compose: emulate [
             ; The predicate is a function that runs on whatever is generated
             ; in the COMPOSE'd slot.  If you put it in a block, that will
             ; splice but protect its contents from splicing (the default).
-            ; We add the twist that `~` isotopes subvert errors in Rebol2.
+            ; We add the twist that `~` antiforms subvert errors in Rebol2.
             ;
             ;    rebol2> type? either true [] []
             ;    == unset!

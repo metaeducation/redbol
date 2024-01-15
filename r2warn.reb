@@ -62,7 +62,7 @@ any-function!: function!: any-function?: function?: deprecated [
     https://forum.rebol.info/t/596
 
     {ANY-FUNCTION! (and FUNCTION!) no longer exist, due to standardizing}
-    {on one type of "invokable", which is FRAME! (isotopically ACTION?)}
+    {on one type of "invokable", which is antiform of FRAME! (action)}
 ]
 
 string!: string?: to-string: deprecated [

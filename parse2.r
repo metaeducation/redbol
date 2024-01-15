@@ -20,7 +20,7 @@ Rebol [
       * Redbol combinators do not return results.  There is no attempt to
         do so in order to achieve some kind of half-baked idea of using Rebol2
         style syntax but using rule products as well; the code is kept as
-        simple as possible by just giving back an isotope with the name of
+        simple as possible by just giving back an antiform with the name of
         the cominator.
     }
 ]
