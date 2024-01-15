@@ -651,7 +651,7 @@ reform: emulate [:spaced]
 form: emulate [
     lambda [
         value [<opt> any-value!]
-        /unspaced "Outer level, append "" [1 2 [3 4]] => {123 4}"
+        /unspaced "Outer level, append {} [1 2 [3 4]] => {123 4}"
     ][
         case [
             issue? :value [
