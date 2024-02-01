@@ -244,7 +244,7 @@ unset: emulate [:unset]
 ; If someone needs it, they can adapt this routine as needed.
 ;
 set: emulate [
-    function [
+    func [
         return: [<opt> any-value!]
         target [any-word! any-path! block! object!]
         value [<opt> any-value!]
@@ -252,8 +252,8 @@ set: emulate [
         /only "Block or object value argument is set as a single value"
         /some "None values in a block or object value argument, are not set"
     ][
-        set_ANY: any
-        any: :ren.any
+        let set_ANY: any
+        any: :lib.any
 
         all [  ; !!! is it necessary to impose this historical restriction?
             not set_ANY
@@ -296,7 +296,7 @@ get: emulate [
         /any
     ][
         let any_GET: any
-        any: :ren.any
+        any: :lib.any
 
         if block? :source [
             return source  ; this is what it did :-/
@@ -331,7 +331,7 @@ value?: emulate [
 ; EVAL-like-thing" easier.
 ;
 do: emulate [
-    function [
+    func [
         return: [<opt> any-value!]
         source [<opt> blank! block! group! text! binary! url! file! tag!
             error! action?
@@ -342,8 +342,8 @@ do: emulate [
         /args [any-value!]
         /next [word!]
     ][
-        var: next
-        next: :ren.next
+        let var: next
+        next: :lib.next
 
         if var [  ; DO/NEXT
             if args [fail "Can't use DO/NEXT with ARGS"]
@@ -463,11 +463,11 @@ parse: emulate [
         /case
         /all "Ignored refinement in <r3-legacy>"
     ][
-        case_PARSE: case
-        case: :ren.case
+        let case_PARSE: case
+        case: :lib.case
 
         comment [all_PARSE: all]  ; Not used
-        all: :ren.all
+        all: :lib.all
 
         return switch type of rules [
             blank! [split input charset reduce [tab space CR LF]]
@@ -506,7 +506,7 @@ compose: emulate [
     ][
         if not block? value [return value]  ; `compose 1` is `1` in Rebol2
 
-        composed: apply :compose [
+        let composed: apply :compose [
             ;
             ; !!! Note: COMPOSE has a LABEL argument that is <skip>-able.
             ; Skippable arguments are entwined with quoting and detection, and
@@ -705,7 +705,7 @@ form: emulate [
                 value
             ]
             block? value [
-                delimit: either unspaced [:ren.unspaced] [:ren.spaced]
+                delimit: either unspaced [:lib.unspaced] [:lib.spaced]
                 delimit map-each item value [
                     redbol.form :item
                 ]
@@ -840,7 +840,7 @@ compress: emulate [
 ]
 
 decompress: emulate [
-    function [
+    func [
         {Deprecated, use DEFLATE or GUNZIP: https://trello.com/c/Bl6Znz0T}
         return: [binary!]
         data [binary!] "Red assumes GZIP, Rebol assumed 'Rebol compressed'"
@@ -923,7 +923,7 @@ for: emulate [denuller :cfor]
 
 while: emulate [denuller :while]
 foreach: emulate [
-    function [
+    func [
         {No SET-WORD! capture, see https://trello.com/c/AXkiWE5Z}
         return: [<opt> any-value!]
         'vars [word! block!]
@@ -940,7 +940,7 @@ foreach: emulate [
         ; Weird FOREACH, transform to WHILE: https://trello.com/c/AXkiWE5Z
         ;
         use :vars [
-            position: data
+            let position: data
             return while [not tail? position] compose [
                 (spread collect [
                     for-each item vars [
