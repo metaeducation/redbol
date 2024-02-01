@@ -45,7 +45,7 @@ append redbol-combinators spread reduce [
         return: [~any~]
         parser [action?]
     ][
-        append state.loops binding of 'return
+        append state.loops binding of @return
 
         remainder: input  ; if no matches, it can still succeed
 
@@ -69,7 +69,7 @@ append redbol-combinators spread reduce [
         parser [action?]
         <local> no-matches
     ][
-        append state.loops binding of 'return
+        append state.loops binding of @return
         no-matches: true
 
         cycle [
@@ -96,7 +96,7 @@ append redbol-combinators spread reduce [
         return: [~while~]
         parser [action?]
     ][
-        append state.loops binding of 'return
+        append state.loops binding of @return
 
         cycle [
             [^ input]: parser input except [

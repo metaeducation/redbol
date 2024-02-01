@@ -36,7 +36,8 @@ REBOL [
 
 export ren: lib  ; save the Ren-C library
 export lib: does [print "Use REN or REDBOL in Redbol implementation, not LIB"]
-redbol: attach of 'redbol  ; not exported--local for disambiguating this file
+redbol: ~  ; emerge variable so @redbol finds it in module
+redbol: binding of @redbol  ; not exported--local for disambiguating this file
 
 
 === WRAPPER FOR "EMULATION-DEFINITIONS-ARE-IN-PROGRESS" ===
@@ -49,21 +50,31 @@ redbol: attach of 'redbol  ; not exported--local for disambiguating this file
 ; Until a module feature to facilitate this kind of thing becomes standard,
 ; this binds the bodies of EMULATE or HELPER things into lib for you.
 
+helpers: module [
+    Exports: []
+] compose [
+    redbol: (redbol)
 
-helper: ren.lambda [
+    import <function2.r>
+    import <parse2.r>
+    import <io2.r>
+]
+
+helper: enfix ren.lambda [
     {NON-EXPORTED definition relying on words in REN (e.g. baseline APPEND)}
-    code [block!]
-] ren.in ren [
-    do in ren code
+    :set-word [set-word!]
+    code [block!]  ; will remove REDBOL module binding and rebind to REN.
+][
+    sys.util.export* helpers (set-word): ren.do ren.overbind helpers ren.inside ren ren.bindable code
 ]
 
 emulate: enfix ren.lambda [
     {EXPORTED definition that relying on words in REN (e.g. baseline APPEND)}
     :set-word [set-word!]
-    code [block!]
+    code [block!]  ; will remove REDBOL module binding and rebind to REN.
     <local> temp
-] ren.in ren [
-    export (set-word): do in ren code
+][
+    export (set-word): ren.do ren.overbind helpers ren.inside ren ren.bindable code
 ]
 
 
@@ -136,13 +147,13 @@ type?: emulate [
     ]
 ]
 
-true?: emulate [x -> [not any [not :x, :x = @none]]]
-false?: emulate [x -> [did any [not :x, :x = @none]]]
+true?: helper [x -> [not any [not :x, :x = @none]]]
+false?: helper [x -> [did any [not :x, :x = @none]]]
+true?: emulate [:true?]
+false?: emulate [:false?]
 export not: :false?
 
 === FUNCTIONS ===
-
-import <function2.r>
 
 any-function!: emulate [action?!]
 any-function?: emulate [:action?]
@@ -194,18 +205,18 @@ for-each-nonconst: emulate [
 ?: emulate [:help]
 
 to-local-file: emulate [
-    if undefined? 'file-to-local [
+    if undefined? @file-to-local [
         does [fail "TO-LOCAL-FILE not available in web build"]
     ] else [
-        get 'file-to-local
+        get @file-to-local
     ]
 ]
 
 to-rebol-file: emulate [
-    if undefined? 'local-to-file [
+    if undefined? @local-to-file [
         does [fail "LOCAL-TO-FILE not available in web build"]
     ] else [
-        get 'local-to-file
+        get @local-to-file
     ]
 ]
 
@@ -444,8 +455,6 @@ also: emulate [
 
 === PARSE ===
 
-import <parse2.r>
-
 ; PARSE in Ren-C is vastly redesigned, but the goal is that it act as a
 ; framework (codename "UPARSE") that can be easily twistable for compatibility:
 ;
@@ -454,7 +463,7 @@ import <parse2.r>
 ; UPARSE is in early development at time of writing and is very slow.  But the
 ; goal is to speed it up over time.  But Redbol uses it today anyway.
 
-parse: emulate [
+parse: emulate compose/deep <*> [
     func [
         {Non-block rules replaced by SPLIT: https://trello.com/c/EiA56IMR}
         return: [logic? block!]
@@ -473,7 +482,10 @@ parse: emulate [
             blank! [split input charset reduce [tab space CR LF]]
             text! [split input to-bitset rules]
         ] else [
-            did apply :uparse2 [input rules /case case_PARSE]
+            ok? apply :uparse2 [
+                input rules
+                /case case_PARSE
+            ]
         ]
     ]
 ]
@@ -611,7 +623,7 @@ rejoin: emulate [
     ][
         cycle [  ; Keep evaluating until a usable BASE is found
 
-            if not (base: evaluate/next block 'block, block) [
+            if not (base: evaluate/next block @block, block) [
                 return copy []  ; exhausted block without finding a base value
             ]
 
@@ -812,7 +824,7 @@ comment [  ; ^-- see remark above
 ]
 
 compress: emulate [
-    function [
+    func [
         {Deprecated, use DEFLATE or GZIP: https://trello.com/c/Bl6Znz0T}
         return: [binary!]
         data [binary! text!]
@@ -822,14 +834,14 @@ compress: emulate [
     ][
         any [gzip, only] else [  ; assume caller wants "Rebol compression"
             data: to-binary copy/part data part
-            zlib: zdeflate data
+            let deflated: zdeflate data
 
             length-32bit: modulo (length of data) (to-integer power 2 32)
             repeat 4 [
-                append zlib modulo (to-integer length-32bit) 256
+                append deflated modulo (to-integer length-32bit) 256
                 length-32bit: me / 256
             ]
-            return zlib  ; ^-- plus size mod 2^32 in big endian
+            return deflated  ; ^-- plus size mod 2^32 in big endian
         ]
 
         return deflate/part/envelope data :lim [
@@ -1004,7 +1016,7 @@ onlify: helper [
             augment action [/only]
         ) compose/deep [
             all [not only, any-array? series, any-array? (param)] then [
-                set/any '(param) spread (param)
+                (param): spread (param)
             ]
             ; ...fall through to normal handling
         ]
@@ -1090,10 +1102,10 @@ oldsplicer: helper [
                 not only, any-array? series,
                 quoted? value, any-path? value
             ] then [
-                set/any 'value spread as block! value  ; splice it
+                value: spread as block! value  ; splice it
             ] else [
                 (match [map! object!] series) then [
-                    set/any 'value spread ensure block! value
+                    value: spread ensure block! value
                 ]
             ]
 
@@ -1157,8 +1169,8 @@ quote: emulate [:the]
 ; interpretation.  This means bad UTF-8 input that isn't Latin1 will be
 ; misinterpreted...but since Rebol2 would accept any bytes, it's no worse.
 ;
-hijack :ren.transcode enclose copy :ren.transcode helper [
-    lambda [f [frame!]] [
+ren.do inside ren '[
+    hijack :transcode enclose copy :transcode lambda [f [frame!]] [
         do copy f except e -> [ ; COPY so we can DO it again if needed
             if e.id != 'bad-utf8 [
                 fail e
@@ -1186,10 +1198,10 @@ hijack :ren.transcode enclose copy :ren.transcode helper [
 
 
 call: emulate [  ; brings back the /WAIT switch (Ren-C waits by default)
-    if undefined? 'call* [
+    if undefined? @call* [
         does [fail "CALL not available in web build"]
     ] else [
-        get 'call*
+        get @call*
     ]
 ]
 
@@ -1202,8 +1214,6 @@ to-integer: emulate [
 
 
 === I/O ===
-
-import <io2.r>
 
 print: emulate [:print2]
 

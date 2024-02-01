@@ -154,19 +154,19 @@ rewrite-spec-and-body: func [
 
     spec: head spec  ; At tail, so seek head for any debugging!
 
-    body-out: compose [
+    body-out: inside body bindable compose [
         ;
         ; We don't go to an effort to provide a non-definitional return.
         ; But support for an EXIT that's a synonym for returning void.
         ;
-        exit: specialize :return [value: '~]
+        exit: (@specialize) :return [value: '~]
 
         ; Historical Rebol supports an implicit RETURN, which was vetoed
         ; in the design of Ren-C (but easy to customize, just like this)
         ;
         ; https://forum.rebol.info/t/1656
         ;
-        return (as group! body)
+        return (bindable as group! body)
     ]
     append spec spread [<local> exit]  ; FUNC needs it (function doesn't...)
     return spec
@@ -191,7 +191,7 @@ func2: func [
     body [block!]
 ][
     if find spec <local> [  ; Red uses `return:` else it would be a good hint
-        return lib.func spec body  ; assume "new style" function
+        return ren.func spec body  ; assume "new style" function
     ]
 
     [spec body]: rewrite-spec-and-body spec body
@@ -207,7 +207,7 @@ function2: func [
     /extern [block!]  ; from R3-Alpha, adopted by Red
 ][
     if find spec <local> [  ; Red uses `return:` else it would be a good hint
-        return lib.function spec body  ; assume "new style" function
+        return ren.function spec body  ; assume "new style" function
     ]
 
     if block? with [with: make object! with]
