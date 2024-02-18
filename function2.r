@@ -159,7 +159,7 @@ rewrite-spec-and-body: func [
         ; We don't go to an effort to provide a non-definitional return.
         ; But support for an EXIT that's a synonym for returning void.
         ;
-        exit: (@specialize) :return [value: '~]
+        exit: ($specialize) :return [value: '~]
 
         ; Historical Rebol supports an implicit RETURN, which was vetoed
         ; in the design of Ren-C (but easy to customize, just like this)

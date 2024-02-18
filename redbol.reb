@@ -36,8 +36,8 @@ REBOL [
 
 export ren: lib  ; save the Ren-C library
 export lib: does [print "Use REN or REDBOL in Redbol implementation, not LIB"]
-redbol: ~  ; emerge variable so @redbol finds it in module
-redbol: binding of @redbol  ; not exported--local for disambiguating this file
+redbol: ~  ; emerge variable so $redbol finds it in module
+redbol: binding of $redbol  ; not exported--local for disambiguating this file
 
 
 === WRAPPER FOR "EMULATION-DEFINITIONS-ARE-IN-PROGRESS" ===
@@ -205,18 +205,18 @@ for-each-nonconst: emulate [
 ?: emulate [:help]
 
 to-local-file: emulate [
-    if undefined? @file-to-local [
+    if undefined? $file-to-local [
         does [fail "TO-LOCAL-FILE not available in web build"]
     ] else [
-        get @file-to-local
+        get $file-to-local
     ]
 ]
 
 to-rebol-file: emulate [
-    if undefined? @local-to-file [
+    if undefined? $local-to-file [
         does [fail "LOCAL-TO-FILE not available in web build"]
     ] else [
-        get @local-to-file
+        get $local-to-file
     ]
 ]
 
@@ -463,7 +463,7 @@ also: emulate [
 ; UPARSE is in early development at time of writing and is very slow.  But the
 ; goal is to speed it up over time.  But Redbol uses it today anyway.
 
-parse: emulate compose/deep <*> [
+parse: emulate [
     func [
         {Non-block rules replaced by SPLIT: https://trello.com/c/EiA56IMR}
         return: [logic? block!]
@@ -623,7 +623,7 @@ rejoin: emulate [
     ][
         cycle [  ; Keep evaluating until a usable BASE is found
 
-            if not (base: evaluate/next block @block, block) [
+            if not (base: evaluate/next block $block, block) [
                 return copy []  ; exhausted block without finding a base value
             ]
 
@@ -1102,10 +1102,10 @@ oldsplicer: helper [
                 not only, any-array? series,
                 quoted? value, any-path? value
             ] then [
-                value: spread as block! value  ; splice it
+                set/any $value spread as block! value  ; splice it
             ] else [
                 (match [map! object!] series) then [
-                    value: spread ensure block! value
+                    set/any $value spread ensure block! value
                 ]
             ]
 
@@ -1198,10 +1198,10 @@ ren.do inside ren '[
 
 
 call: emulate [  ; brings back the /WAIT switch (Ren-C waits by default)
-    if undefined? @call* [
+    if undefined? $call* [
         does [fail "CALL not available in web build"]
     ] else [
-        get @call*
+        get $call*
     ]
 ]
 
