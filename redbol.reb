@@ -3,7 +3,7 @@ REBOL [
     Title: "Rebol2 and Red Compatibility Shim"
     Homepage: https://trello.com/b/l385BE7a/porting-guide
     Rights: {
-        Copyright 2012-2022 Ren-C Open Source Contributors
+        Copyright 2012-2024 Ren-C Open Source Contributors
         REBOL is a trademark of REBOL Technologies
     }
     Type: module
@@ -88,6 +88,7 @@ to-string: emulate [specialize :to [type: text!]]
 ; The belief is that TO a char-like thing of 1 should be #"1"
 ; Currently AS is serving as the numeric converter.
 ;
+char!: emulate [&char?]  ; type contraint on issue
 to-char: emulate [
     lambda [value] [
         either integer? value [
@@ -98,23 +99,28 @@ to-char: emulate [
     ]
 ]
 
+lit-word!: emulate [&lit-word?]  ; quoted word, not its own fundamental type
+lit-path: emulate [&lit-path?]  ; quoted path, not its own fundamental type
+
+refinement!: emulate [&refinement?]  ; blank-headed PATH! with word
+
 paren!: emulate [group!]
 paren?: emulate [:group?]
 to-paren: emulate [specialize :to [type: group!]]
 
-number!: emulate [any-number!]
+number!: emulate [&any-number?]
 number?: emulate [:any-number?]
-scalar!: emulate [any-scalar!]
+scalar!: emulate [&any-scalar?]
 scalar?: emulate [:any-scalar?]
-series!: emulate [any-series!]
+series!: emulate [&any-series?]
 series?: emulate [:any-series?]
 
-any-type!: emulate [any-value!]  ; !!! does not include any "UNSET!"
+any-type!: emulate [&any-value?]
 
-any-block!: emulate [any-array!]
+any-block!: emulate [&any-array?]
 any-block?: emulate [:any-array?]
 
-any-object!: emulate [any-context!]
+any-object!: emulate [&any-context?]
 any-object?: emulate [:any-context?]
 
 ; Redbol wants something reified that does not reduce that is falsey.
@@ -131,7 +137,7 @@ none?: emulate [x -> [:x = @none]]
 
 type?: emulate [
     lambda [
-        value [<opt> any-value!]
+        value [<opt> any-value?]
         /word {Note: SWITCH evaluates https://trello.com/c/fjJb3eR2}
     ][
         case [
@@ -229,7 +235,7 @@ null: emulate [
 comment: emulate [
     func [
         return: [~] {Not invisible: https://trello.com/c/dWQnsspG}
-        :discarded [block! any-string! binary! any-scalar!]
+        :discarded [block! any-string? binary! any-scalar?]
     ][
     ]
 ]
@@ -256,9 +262,9 @@ unset: emulate [:unset]
 ;
 set: emulate [
     func [
-        return: [<opt> any-value!]
-        target [any-word! any-path! block! object!]
-        value [<opt> any-value!]
+        return: [any-value?]
+        target [any-word? any-path? block! object!]
+        value [<opt> any-value?]
         /any "Allow UNSET as a value rather than causing an error"
         /only "Block or object value argument is set as a single value"
         /some "None values in a block or object value argument, are not set"
@@ -301,9 +307,9 @@ set: emulate [
 get: emulate [
     func [
         {Now no OBJECT! support, unset vars always null}
-        return: [<opt> any-value!]
+        return: [<opt> any-value?]
         source {Legacy handles Rebol2 types, not *any* type like R3-Alpha}
-            [blank! any-word! any-path! any-context! block!]
+            [blank! any-word? any-path? any-context? block!]
         /any
     ][
         let any_GET: any
@@ -343,14 +349,14 @@ value?: emulate [
 ;
 do: emulate [
     func [
-        return: [<opt> any-value!]
+        return: [<opt> any-value?]
         source [<opt> blank! block! group! text! binary! url! file! tag!
             error! action?
         ]
-        normals [any-value! <variadic>]
-        'softs [any-value! <variadic>]
-        :hards [any-value! <variadic>]
-        /args [any-value!]
+        normals [any-value? <variadic>]
+        'softs [any-value? <variadic>]
+        :hards [any-value? <variadic>]
+        /args [any-value?]
         /next [word!]
     ][
         let var: next
@@ -387,7 +393,7 @@ to: emulate [
     enclose :to func [f] [
         all [
             :f.value = group!
-            find any-word! f.type
+            find any-word? f.type
             return as type! 'paren!
         ]
         all [
@@ -396,7 +402,7 @@ to: emulate [
             return make issue! :f.value
         ]
         all [
-            find any-array! f.type
+            find any-array? f.type
             binary? :f.value
             return as f.type transcode f.value
         ]
@@ -445,8 +451,8 @@ default: emulate [
 also: emulate [
     lambda [
         {Supplanted by ELIDE: https://trello.com/c/pGhk9EbV}
-        returned [<opt> any-value!]
-        discarded [<opt> any-value!]
+        returned [any-value?]
+        discarded [any-value?]
     ][
         :returned
     ]
@@ -467,7 +473,7 @@ parse: emulate [
     func [
         {Non-block rules replaced by SPLIT: https://trello.com/c/EiA56IMR}
         return: [logic? block!]
-        input [any-series!]
+        input [any-series?]
         rules [block! text! blank!]
         /case
         /all "Ignored refinement in <r3-legacy>"
@@ -497,7 +503,7 @@ reduce: emulate [
     lambda [
         value "Not just BLOCK!s evaluated: https://trello.com/c/evTPswH3"
         /into "https://forum.rebol.info/t/stopping-the-into-virus/705"
-            [any-array!]
+            [any-array?]
     ][
         case [
             not block? :value [:value]
@@ -510,11 +516,11 @@ reduce: emulate [
 
 compose: emulate [
     lambda [
-        value "Ren-C does not splice by default (needs SPREAD)" [any-value!]
+        value "Ren-C does not splice by default (needs SPREAD)" [any-value?]
         /deep "Ren-C recurses into PATH!s: https://trello.com/c/8WMgdtMp"
         /only
         /into "https://forum.rebol.info/t/stopping-the-into-virus/705"
-            [any-array! any-string! binary!]
+            [any-array? any-string? binary!]
     ][
         if not block? value [return value]  ; `compose 1` is `1` in Rebol2
 
@@ -543,7 +549,7 @@ compose: emulate [
             /predicate if not only [
                 lambda [group <local> product] [
                     product: eval group else [@none]
-                    (non any-array! :product) else array -> [spread array]
+                    (non &any-array? :product) else array -> [spread array]
                 ]
             ]
         ]
@@ -556,7 +562,7 @@ collect: emulate [
     lambda [
         body [block!]
         /into "https://forum.rebol.info/t/stopping-the-into-virus/705"
-            [any-series!]
+            [any-series?]
     ][
         let out: any [into, make block! 16]
 
@@ -582,11 +588,11 @@ collect: emulate [
 
 repend: emulate [
     lambda [
-        series [any-series! port! map! object! bitset!]
+        series [any-series? port! map! object! bitset!]
         value
-        /part [any-number! any-series! pair!]
+        /part [any-number? any-series? pair!]
         /only
-        /dup [any-number! pair!]
+        /dup [any-number? pair!]
     ][
         apply :redbol.append [  ; Want overridden APPEND semantics (vs Ren-C)
             series
@@ -616,7 +622,7 @@ rejoin: emulate [
         {Reduces and joins a block of values}
 
         return: "Same type as first non-null item produced by evaluation"
-            [issue! any-series! any-sequence!]
+            [issue! any-series? any-sequence?]
         block "Values to reduce and join together"
             [block!]
         <local> base
@@ -637,7 +643,7 @@ rejoin: emulate [
             ; !!! Historical Rebol would default to a TEXT! if the first thing
             ; found wasn't JOIN-able.  This is questionable.
             ;
-            if not match [issue! any-sequence! any-series!] :base [
+            if not match [issue! any-sequence? any-series?] :base [
                 base: to text! :base
             ]
 
@@ -662,7 +668,7 @@ reform: emulate [:spaced]
 
 form: emulate [
     lambda [
-        value [<opt> any-value!]
+        value [any-value?]
         /unspaced "Outer level, append {} [1 2 [3 4]] => {123 4}"
     ][
         case [
@@ -731,7 +737,7 @@ form: emulate [
 quit: emulate [
     lambda [
         /return "Ren-C is variadic, 0 or 1 arg: https://trello.com/c/3hCNux3z"
-            [<opt> any-value!]
+            [any-value?]
     ][
         apply :quit [/with :return]
     ]
@@ -766,7 +772,7 @@ construct: emulate [
 break: emulate [
     lambda [
         /return "/RETURN is deprecated: https://trello.com/c/cOgdiOAD"
-            [any-value!]
+            [any-value?]
     ][
         if return [
             fail [
@@ -802,7 +808,7 @@ comment [  ; ^-- see remark above
                 any-series? :value [next value]
                 integer? :value [value + 1]
             ] else [
-                fail "++ only works on ANY-SERIES! or INTEGER!"
+                fail "++ only works on SERIES! or INTEGER!"
             ])
         ]
     ]
@@ -817,7 +823,7 @@ comment [  ; ^-- see remark above
                 any-series? :value [next value]
                 integer? :value [value + 1]
             ] else [
-                fail "-- only works on ANY-SERIES! or INTEGER!"
+                fail "-- only works on SERIES! or INTEGER!"
             ])
         ]
     ]
@@ -828,7 +834,7 @@ compress: emulate [
         {Deprecated, use DEFLATE or GZIP: https://trello.com/c/Bl6Znz0T}
         return: [binary!]
         data [binary! text!]
-        /part [any-value!]
+        /part [any-value?]
         /gzip
         /only
     ][
@@ -895,7 +901,7 @@ denuller: helper [
         chain [
             :action
 
-            lambda [^x [<opt> <void> pack? any-value!]] [
+            lambda [^x [<opt> <void> pack? any-value?]] [
                 (unmeta x) else [@none]
             ]
         ]
@@ -905,8 +911,8 @@ denuller: helper [
 === CONDITIONALS ===
 
 ; Concept of "truthy" and "falsey" are different in Ren-C, where NULL is falsey
-; and all ANY-VALUE! are true.  We want to make exceptions for reified ideas
-; of LOGIC? and NONE? for Redbol.  Currently the only way to do that is to
+; and all ANY-ELEMENT? are true.  We want to make exceptions for reified ideas
+; of LOGIC! and NONE! for Redbol.  Currently the only way to do that is to
 ; leverage the predicates of the conditionals.
 
 if: emulate [denuller adapt :if [condition: true? :condition]]
@@ -937,9 +943,9 @@ while: emulate [denuller :while]
 foreach: emulate [
     func [
         {No SET-WORD! capture, see https://trello.com/c/AXkiWE5Z}
-        return: [<opt> any-value!]
+        return: [<opt> any-value?]
         'vars [word! block!]
-        data [any-series! any-context! map! blank!]
+        data [any-series? any-context? map! blank!]
         body [block!]
     ][
         any [
@@ -978,14 +984,14 @@ foreach: emulate [
 
 loop: emulate [denuller :repeat]
 
-; REPEAT in Rebol2 with an ANY-SERIES! argument acted like a FOR-EACH on that
+; REPEAT in Rebol2 with an SERIES! argument acted like a FOR-EACH on that
 ; series.  This is redundant with FOR-EACH.
 ;
 ; R3-Alpha changed the semantics to be like a FOR-NEXT (e.g. FORALL) where you
 ; could specify the loop variable instead of insisting your loop variable be
 ; the data you are iterating.
 ;
-; Red forbids ANY-SERIES! as the argument of what to iterate over.
+; Red forbids SERIES! as the argument of what to iterate over.
 ;
 ; https://trello.com/c/CjEfA0ef
 ;
@@ -1126,7 +1132,7 @@ oldsplicer: helper [
             ; It would also spell WORD!s as their Latin1 values.
             ;
             all [
-                match [any-string! binary!] series
+                match [any-string? binary!] series
                 not block? value
                 not issue? value  ; want e.g. # adds as #{00} to BINARY!
                 not integer? value

@@ -17,7 +17,7 @@ Rebol [
 
 print2: func [
     return: [~]
-    value [any-value!]  ; Ren-C only takes TEXT!, BLOCK!, BLANK!, CHAR?
+    value [any-value?]  ; Ren-C only takes TEXT!, BLOCK!, BLANK!, CHAR?
 ][
     write-stdout case [
         block? :value [spaced value]

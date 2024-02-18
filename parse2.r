@@ -272,7 +272,7 @@ append redbol-combinators spread reduce [
             return raise "INTO used at end of PARSE input"
         ]
         if not any-series? subseries: input.1 [
-            fail "Need ANY-SERIES! datatype for use with INTO in UPARSE"
+            fail "Need SERIES! datatype for use with INTO in UPARSE"
         ]
 
         ; If the entirety of the item at the input array is matched by the

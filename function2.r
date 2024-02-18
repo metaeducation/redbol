@@ -110,14 +110,14 @@ rewrite-spec-and-body: func [
 
         spool-descriptions-and-locals
 
-        ; may be at tail, if so need the [any-value!] injection
+        ; may be at tail, if so need the [any-value?] injection
 
         if types: match block! spec.1 [  ; explicit arg types
             swap-if-after-local
             spec: my next
         ]
         else [
-            insert spec [any-value!]  ; old refinement-arg default
+            insert spec [any-value?]  ; old refinement-arg default
             swap-if-after-local
             spec: my next
         ]
@@ -142,7 +142,7 @@ rewrite-spec-and-body: func [
         spool-descriptions-and-locals
         if tail? spec [break]
 
-        if let extra: match any-word! first spec [
+        if let extra: match &any-word? first spec [
             fail [
                 {Refinement} refinement {can't take more than one}
                 {argument in the Redbol emulation, so} extra {must be}
@@ -256,7 +256,7 @@ has2: lambda [
 ; customized apply-like functions.
 
 apply2: func [
-    return: [<opt> any-value!]
+    return: [any-value?]
     action [<unrun> frame!]
     block [block!]
     /only

@@ -68,7 +68,7 @@ any-function!: function!: any-function?: function?: deprecated [
 string!: string?: to-string: deprecated [
     https://forum.rebol.info/t/text-vs-string/612
 
-    {ANY-WORD! types are being unified with ANY-STRING!, leaving string as}
+    {ANY-STRING? is the new name for the typecheck, leaving string as}
     {the name for the category--not a type member.  TEXT! is the new name.}
 ]
 
@@ -81,26 +81,24 @@ paren!: paren?: to-paren: deprecated [
 number!: number?: scalar!: scalar?: series!: series?: deprecated [
     https://trello.com/c/d0Nw87kp
 
-    {Don't use NUMBER!, SCALAR!, SERIES!.  Use ANY-NUMBER!, ANY-SERIES! etc.}
-    {(typesets containing ANY- helps signal they are not concrete types)}
+    {Don't use NUMBER!, SCALAR!, SERIES!.  Use &ANY-NUMBER?, &ANY-SERIES? etc.}
 ]
 
 any-type!: deprecated [
     https://trello.com/c/1jTJXB0d
 
-    {ANY-TYPE! is too much like ANY-DATATYPE!, ANY-VALUE! is the new typeset.}
-    {However, it does not contain any "UNSET!", see `<opt>` in action specs.}
+    {ANY-TYPE! is too much like ANY-DATATYPE!, ANY-VALUE? is the new typecheck}
 ]
 
 any-block!: any-block?: deprecated [
     https://trello.com/c/lCSdxtux
 
-    {ANY-ARRAY! has replaced ANY-BLOCK!}
+    {&ANY-ARRAY? has replaced ANY-BLOCK!}
     {This is clearer than BLOCK! being a member name -and- a category name.}
 ]
 
 any-object!: any-object?: deprecated [
-    {ANY-CONTEXT! has replaced ANY-OBJECT!}
+    {&ANY-CONTEXT? has replaced ANY-OBJECT!}
     {This is clearer than OBJECT! being a member name -and- a category name.}
 ]
 
