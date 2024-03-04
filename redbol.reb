@@ -137,7 +137,7 @@ none?: emulate [x -> [:x = @none]]
 
 type?: emulate [
     lambda [
-        value [<opt> any-value?]
+        value [~null~ any-value?]
         /word {Note: SWITCH evaluates https://trello.com/c/fjJb3eR2}
     ][
         case [
@@ -264,7 +264,7 @@ set: emulate [
     func [
         return: [any-value?]
         target [any-word? any-path? block! object!]
-        value [<opt> any-value?]
+        value [~null~ any-value?]
         /any "Allow UNSET as a value rather than causing an error"
         /only "Block or object value argument is set as a single value"
         /some "None values in a block or object value argument, are not set"
@@ -307,7 +307,7 @@ set: emulate [
 get: emulate [
     func [
         {Now no OBJECT! support, unset vars always null}
-        return: [<opt> any-value?]
+        return: [~null~ any-value?]
         source {Legacy handles Rebol2 types, not *any* type like R3-Alpha}
             [blank! any-word? any-path? any-context? block!]
         /any
@@ -349,8 +349,8 @@ value?: emulate [
 ;
 do: emulate [
     func [
-        return: [<opt> any-value?]
-        source [<opt> blank! block! group! text! binary! url! file! tag!
+        return: [~null~ any-value?]
+        source [~null~ blank! block! group! text! binary! url! file! tag!
             error! action?
         ]
         normals [any-value? <variadic>]
@@ -901,7 +901,7 @@ denuller: helper [
         chain [
             :action
 
-            lambda [^x [<opt> <void> pack? any-value?]] [
+            lambda [^x [~null~ ~void~ pack? any-value?]] [
                 (unmeta x) else [@none]
             ]
         ]
@@ -943,7 +943,7 @@ while: emulate [denuller :while]
 foreach: emulate [
     func [
         {No SET-WORD! capture, see https://trello.com/c/AXkiWE5Z}
-        return: [<opt> any-value?]
+        return: [~null~ any-value?]
         'vars [word! block!]
         data [any-series? any-context? map! blank!]
         body [block!]

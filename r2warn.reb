@@ -136,7 +136,7 @@ unless: checked [
     enfixed func [
         {Returns left hand side, unless the right hand side is a value}
 
-        return: [<opt> any-value!]
+        return: [~null~ any-value!]
         left [<end> any-value!]
         'right [any-value! <variadic>]
         'look [any-value! <variadic>]
